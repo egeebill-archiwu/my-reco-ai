@@ -1643,3 +1643,295 @@ audio {
   border-color: rgba(239, 68, 68, 0.3);
   box-shadow: 0 10px 30px rgba(239, 68, 68, 0.15);
 }
+
+/* ==================== 鎖屏偽裝螢幕保護程式 ==================== */
+.fake-lock-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000000;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 20px 40px 20px;
+  box-sizing: border-box;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
+  transform: translateY(0);
+  touch-action: none;
+}
+
+.fake-lock-screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fake-lock-screen.unlocking {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.lock-screen-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.lock-screen-time {
+  font-size: 80px;
+  font-weight: 200;
+  margin-bottom: 5px;
+  letter-spacing: -2px;
+  color: #ffffff;
+  opacity: 0.9;
+}
+
+.lock-screen-date {
+  font-size: 20px;
+  font-weight: 400;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+.lock-screen-status {
+  font-size: 14px;
+  color: #34c759; /* iOS 綠色 */
+  background: rgba(52, 199, 89, 0.1);
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  opacity: 0.7;
+}
+
+.lock-screen-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #ffffff;
+  opacity: 0.6;
+  animation: bounce-up 2s infinite;
+  margin-top: auto;
+}
+
+@keyframes bounce-up {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}
+
+/* ==================== 簡報幻燈片 UI (Slides Presentation) ==================== */
+.slides-viewer-wrapper {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.slides-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  gap: 10px;
+}
+
+.slides-container {
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+  height: 280px; /* 幻燈片卡片高度 */
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.slide-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(50px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.1, 0.9, 0.2, 1);
+  padding: 24px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.slide-card.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.slide-card.prev-slide {
+  transform: translateX(-50px);
+}
+
+.slide-card-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+}
+
+.slide-card-header h3 {
+  font-family: var(--font-title);
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.slide-card-header .slide-number {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-title);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.slide-card-body {
+  flex-grow: 1;
+  padding: 16px 0 0 0;
+  overflow-y: auto;
+}
+
+.slide-card-body p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.slide-card-body ul {
+  margin-left: 20px;
+}
+
+.slide-card-body li {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.btn-carousel-ctrl {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-smooth);
+}
+
+.btn-carousel-ctrl:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.slide-indicators {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.slide-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.slide-dot.active {
+  background-color: var(--accent-blue);
+  box-shadow: 0 0 6px var(--accent-blue);
+  width: 16px;
+  border-radius: 4px;
+}
+
+/* ==================== 簡報列印 PDF 樣式 ==================== */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #fakeLockScreen, .sidebar, .mobile-header, .detail-header, .audio-control-panel, .tab-container, .transcript-controls, .assistant-panel, #toastContainer, #settingsModal, #instructionsModal {
+    display: none !important;
+  }
+  
+  .slides-viewer-wrapper, .slides-viewer-wrapper * {
+    visibility: visible;
+  }
+  
+  .slides-carousel {
+    display: block !important;
+    width: 100% !important;
+  }
+  
+  .btn-carousel-ctrl, .slide-indicators, button {
+    display: none !important;
+  }
+  
+  .slides-container {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+  
+  .slide-card {
+    position: relative !important;
+    display: flex !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    page-break-after: always !important;
+    width: 100% !important;
+    height: 190mm !important; /* 適合 A4 橫式比例 */
+    margin: 0 0 20px 0 !important;
+    background: #0f172a !important;
+    border: 2px solid #334155 !important;
+    color: #fff !important;
+    box-sizing: border-box !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .slide-card-header h3 {
+    color: #38bdf8 !important;
+    -webkit-text-fill-color: #38bdf8 !important;
+  }
+
+  .slide-card-body li {
+    color: #e2e8f0 !important;
+  }
+}

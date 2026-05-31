@@ -151,14 +151,17 @@
               <span class="pulse-dot"></span>
               <span class="timer" id="recordingTimer">00:00:00</span>
             </div>
-            <div class="record-actions">
-              <button class="btn-round btn-warning" id="pauseRecordBtn" title="暫停/繼續">
-                <i class="fa-solid fa-pause"></i>
-              </button>
-              <button class="btn-round btn-danger" id="stopRecordBtn" title="結束並轉譯">
-                <i class="fa-solid fa-stop"></i>
-              </button>
-            </div>
+             <div class="record-actions">
+               <button class="btn-round btn-secondary" id="lockRecordBtn" title="鎖屏偽裝 (隱密錄音)">
+                 <i class="fa-solid fa-lock"></i>
+               </button>
+               <button class="btn-round btn-warning" id="pauseRecordBtn" title="暫停/繼續">
+                 <i class="fa-solid fa-pause"></i>
+               </button>
+               <button class="btn-round btn-danger" id="stopRecordBtn" title="結束並轉譯">
+                 <i class="fa-solid fa-stop"></i>
+               </button>
+             </div>
           </div>
 
           <!-- 播放音軌狀態 -->
@@ -240,6 +243,38 @@
                   <p class="placeholder-text">待辦清單將與摘要一同生成。</p>
                 </div>
               </div>
+
+              <!-- 會議簡報幻燈片區 -->
+              <div class="summary-section" id="slidesSection">
+                <h2><i class="fa-solid fa-chart-pie"></i> 會議簡報幻燈片</h2>
+                <div id="slidesPlaceholder">
+                  <p class="placeholder-text">您可以使用 AI 將本次會議彙整為 6 頁的重點簡報幻燈片。</p>
+                  <button class="btn-secondary" id="generateSlidesBtn" style="margin-top: 10px; width: 100%;">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> 一鍵生成簡報幻燈片
+                  </button>
+                </div>
+                <div class="slides-viewer-wrapper hidden" id="slidesViewerWrapper">
+                  <div class="slides-carousel">
+                    <button class="btn-carousel-ctrl" id="prevSlideBtn"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="slides-container" id="slidesContainer">
+                      <!-- 簡報幻燈片卡片會動態生成 -->
+                    </div>
+                    <button class="btn-carousel-ctrl" id="nextSlideBtn"><i class="fa-solid fa-chevron-right"></i></button>
+                  </div>
+                  <div class="slide-indicators" id="slideIndicators">
+                    <!-- 指示點會動態生成 -->
+                  </div>
+                  <div style="display: flex; gap: 10px; margin-top: 16px; width: 100%;">
+                    <button class="btn-secondary" id="regenerateSlidesBtn" style="flex: 1;">
+                      <i class="fa-solid fa-rotate"></i> 重新生成簡報
+                    </button>
+                    <button class="btn-primary" id="exportSlidesBtn" style="flex: 1;">
+                      <i class="fa-solid fa-file-pdf"></i> 匯出簡報 (PDF)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <button class="btn-primary" id="regenerateSummaryBtn">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> 重新生成 AI 摘要與待辦
               </button>
@@ -381,6 +416,21 @@
       </div>
       <div class="modal-footer">
         <button class="btn-primary" id="closeInstructionsBtn">我瞭解了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 鎖屏偽裝螢幕保護程式 -->
+  <div class="fake-lock-screen" id="fakeLockScreen">
+    <div class="lock-screen-content">
+      <div class="lock-screen-time" id="lockScreenTime">00:00</div>
+      <div class="lock-screen-date" id="lockScreenDate">6月1日 星期一</div>
+      <div class="lock-screen-status">
+        <i class="fa-solid fa-battery-three-quarters"></i> 80% 充電中
+      </div>
+      <div class="lock-screen-hint">
+        <i class="fa-solid fa-chevron-up"></i>
+        <span>向上滑動解鎖</span>
       </div>
     </div>
   </div>
