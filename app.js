@@ -97,6 +97,7 @@ const el = {
   // Modal 彈出視窗
   settingsModal: document.getElementById('settingsModal'),
   apiKeyInput: document.getElementById('apiKeyInput'),
+  modelSelect: document.getElementById('modelSelect'),
   closeModalBtn: document.getElementById('closeModalBtn'),
   cancelSettingsBtn: document.getElementById('cancelSettingsBtn'),
   saveSettingsBtn: document.getElementById('saveSettingsBtn')
@@ -117,13 +118,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
 
-  // 載入 API Key
+  // 載入 API Key 與模型設定
   const savedKey = localStorage.getItem('gemini_api_key');
   if (savedKey) {
     el.apiKeyInput.value = savedKey;
   } else {
     // 第一次使用，主動彈出設定框
     showSettingsModal();
+  }
+  const savedModel = localStorage.getItem('gemini_model');
+  if (savedModel && el.modelSelect) {
+    el.modelSelect.value = savedModel;
   }
 
   // 載入會議清單
@@ -272,13 +277,15 @@ function hideInstructionsModal() {
 
 function saveSettings() {
   const key = el.apiKeyInput.value.trim();
+  const model = el.modelSelect ? el.modelSelect.value : 'gemini-1.5-flash';
   if (key) {
     try {
       localStorage.setItem('gemini_api_key', key);
-      showToast('Gemini API 金鑰已儲存！', 'success');
+      localStorage.setItem('gemini_model', model);
+      showToast('Gemini API 設定已儲存！', 'success');
       hideSettingsModal();
     } catch (e) {
-      console.error('儲存金鑰失敗:', e);
+      console.error('儲存設定失敗:', e);
       showToast('儲存失敗，請檢查瀏覽器 Cookie/隱私設定。', 'error');
     }
   } else {
@@ -842,7 +849,8 @@ async function triggerTranscription() {
     const langHint = el.languageHintSelect.value;
     
     // 3. 調用 API
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const model = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const prompt = `
       你是一個專業的會議逐字稿生成助理。請仔細聆聽這段音訊，並完成以下任務：
@@ -1038,7 +1046,8 @@ async function triggerSummaryGeneration(showAlert = true) {
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const model = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const formattedTranscript = currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n');
     
@@ -1209,7 +1218,8 @@ async function sendChatMessage() {
   const aiMessageId = appendChatMessage('ai', '<i class="fa-solid fa-spinner fa-spin"></i> AI 正在閱讀紀錄並思考中...');
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const model = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const hasTranscript = currentMeeting.transcript && currentMeeting.transcript.length > 0;
     const formattedTranscript = hasTranscript 

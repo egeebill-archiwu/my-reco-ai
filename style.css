@@ -1440,7 +1440,7 @@ audio {
   color: var(--text-primary);
 }
 
-.form-group input {
+.form-group input, .form-group select {
   background-color: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border-glass);
   border-radius: 12px;
@@ -1452,7 +1452,7 @@ audio {
   transition: var(--transition-smooth);
 }
 
-.form-group input:focus {
+.form-group input:focus, .form-group select:focus {
   border-color: var(--border-glass-focus);
 }
 

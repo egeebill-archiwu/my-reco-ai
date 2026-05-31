@@ -326,6 +326,16 @@
           <p class="help-text">金鑰僅會儲存在您的瀏覽器本地 `localStorage`，不會被上傳到任何第三方伺服器，安全且保密。</p>
         </div>
 
+        <div class="form-group">
+          <label for="modelSelect">選擇 Gemini 模型：</label>
+          <select id="modelSelect">
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash (推薦 - 每日 1500 次免費額度)</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (每日 20 次免費額度限制)</option>
+            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (每日 1500 次免費額度)</option>
+          </select>
+          <p class="help-text">若遇到 429 額度超限錯誤，建議更換為 Gemini 1.5 Flash 或 2.5 Flash-Lite 以享有更高的每日免費額度。</p>
+        </div>
+
         <div class="guide-banner">
           <h4>如何取得免費的 Gemini API Key？</h4>
           <ol>
