@@ -1088,6 +1088,23 @@ audio {
   display: flex;
   border-bottom: 1px solid var(--border-glass);
   background-color: rgba(0, 0, 0, 0.15);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-close-assistant {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.btn-close-assistant:hover {
+  color: var(--text-primary);
 }
 
 .assistant-tab-btn {
@@ -1135,7 +1152,8 @@ audio {
 .assistant-pane {
   display: none;
   flex-direction: column;
-  height: 100%;
+  flex-grow: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -1147,7 +1165,8 @@ audio {
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex-grow: 1;
+  min-height: 0;
 }
 
 .chat-messages {
@@ -1553,6 +1572,22 @@ audio {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
+  }
+
+  .btn-close-assistant {
+    display: block;
+  }
+
+  .welcome-view {
+    justify-content: flex-start;
+    align-items: stretch;
+    padding-top: 20px;
+    height: auto;
+  }
+
+  .welcome-card {
+    padding: 24px 16px;
+    margin: 10px 0;
   }
 }
 

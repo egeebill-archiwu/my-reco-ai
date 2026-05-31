@@ -31,6 +31,12 @@ const el = {
   goHomeBtn: document.getElementById('goHomeBtn'),
   logo: document.querySelector('.logo'),
   mobileLogo: document.querySelector('.mobile-logo'),
+  mobileAssistantBtn: document.getElementById('mobileAssistantBtn'),
+  closeAssistantBtn: document.getElementById('closeAssistantBtn'),
+  instructionsModal: document.getElementById('instructionsModal'),
+  instructionsBtn: document.getElementById('instructionsBtn'),
+  closeInstructionsModalBtn: document.getElementById('closeInstructionsModalBtn'),
+  closeInstructionsBtn: document.getElementById('closeInstructionsBtn'),
   meetingCount: document.getElementById('meetingCount'),
   searchMeetingsInput: document.getElementById('searchMeetingsInput'),
   meetingList: document.getElementById('meetingList'),
@@ -146,10 +152,34 @@ function setupEventListeners() {
   if (el.mobileLogo) el.mobileLogo.addEventListener('click', showWelcomeView);
 
   // 新增會議
-  el.newMeetingBtn.addEventListener('click', createNewMeetingOffline);
+  if (el.newMeetingBtn) el.newMeetingBtn.addEventListener('click', createNewMeetingOffline);
   el.actionRecord.addEventListener('click', startRecordingWorkflow);
   el.actionUpload.addEventListener('click', () => el.fileUploadInput.click());
   el.fileUploadInput.addEventListener('change', handleFileUpload);
+
+  // 手機版 AI 助理側邊欄控制
+  if (el.mobileAssistantBtn) {
+    el.mobileAssistantBtn.addEventListener('click', () => {
+      el.assistantPanel.classList.toggle('active');
+    });
+  }
+  if (el.closeAssistantBtn) {
+    el.closeAssistantBtn.addEventListener('click', () => {
+      el.assistantPanel.classList.remove('active');
+    });
+  }
+
+  // 使用說明 Modal
+  if (el.instructionsBtn) el.instructionsBtn.addEventListener('click', showInstructionsModal);
+  if (el.closeInstructionsModalBtn) el.closeInstructionsModalBtn.addEventListener('click', hideInstructionsModal);
+  if (el.closeInstructionsBtn) el.closeInstructionsBtn.addEventListener('click', hideInstructionsModal);
+  
+  // 點擊 Modal 外側關閉
+  if (el.instructionsModal) {
+    el.instructionsModal.addEventListener('click', (e) => {
+      if (e.target === el.instructionsModal) hideInstructionsModal();
+    });
+  }
 
   // 搜尋會議
   el.searchMeetingsInput.addEventListener('input', filterMeetings);
@@ -230,6 +260,14 @@ function showSettingsModal() {
 
 function hideSettingsModal() {
   el.settingsModal.classList.remove('active');
+}
+
+function showInstructionsModal() {
+  el.instructionsModal.classList.add('active');
+}
+
+function hideInstructionsModal() {
+  el.instructionsModal.classList.remove('active');
 }
 
 function saveSettings() {
@@ -1152,12 +1190,6 @@ async function sendChatMessage() {
     return;
   }
 
-  // 檢查是否有逐字稿
-  if (!currentMeeting.transcript || currentMeeting.transcript.length === 0) {
-    showToast('本會議尚無逐字稿資料，AI 無法回答。請先生成逐字稿！', 'error');
-    return;
-  }
-
   // 顯示用戶訊息
   appendChatMessage('user', question);
   el.chatInput.value = '';
@@ -1168,17 +1200,31 @@ async function sendChatMessage() {
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-    const formattedTranscript = currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n');
+    const hasTranscript = currentMeeting.transcript && currentMeeting.transcript.length > 0;
+    const formattedTranscript = hasTranscript 
+      ? currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n')
+      : '（此會議目前尚無錄音轉譯的逐字稿）';
+
+    const notes = await getNotesByMeetingId(currentMeeting.id);
+    const notesContent = (notes && notes.length > 0)
+      ? notes.map((n, idx) => `[備註卡片 ${idx + 1}] ${n.content}`).join('\n')
+      : '（此會議目前尚無個人備註卡片筆記）';
 
     const systemInstruction = `
       你是一位貼心的會議筆記助理。你熟悉以下會議的所有細節。
-      你的任務是協助用戶從以下這份會議逐字稿中尋找答案、回答問題、澄清疑慮、或是協助重新整理、起草信件。
+      你的任務是協助用戶從以下這份會議背景資訊中尋找答案、回答問題、澄清疑慮、或是協助重新整理、起草信件。
+      
+      【會議標題】：${currentMeeting.title}
+      【會議時間】：${currentMeeting.created_at}
       
       【會議逐字稿背景資訊】：
       ${formattedTranscript}
       
+      【會議個人備註卡片筆記】：
+      ${notesContent}
+      
       規則：
-      1. 僅根據上方的逐字稿資訊進行回答。如果在逐字稿中找不到相關內容，請老實告訴用戶「根據會議紀錄，似乎沒有提及此內容」。
+      1. 優先根據上方的會議資訊與備註進行回答。如果在逐字稿與備註中找不到相關內容，且使用者詢問關於會議的具體決議或發言，請老實告訴用戶「根據會議紀錄，似乎沒有提及此內容」。如果使用者是進行一般的討論、問候或要求基於現有資訊起草內容，請直接友善地協助。
       2. 請使用台灣習慣的繁體中文，語氣保持專業與親切。
       3. 如果有需要，可以適度引用逐字稿中的時間戳（例如：在 05:20 處，說話者 A 點出了...）。
     `;

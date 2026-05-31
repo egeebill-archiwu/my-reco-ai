@@ -24,7 +24,7 @@
     <!-- 頂部與側邊導覽列 -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <div class="logo">
+        <div class="logo" title="RECO AI - 您的智慧會議工具。支援無限制的高精度錄音轉譯、說話者識別、重點摘要，並配備類似 NotebookLM 的 AI 筆記助理與備註卡片功能。">
           <i class="fa-solid fa-microphone-lines logo-icon"></i>
           <span>RECO <span class="logo-accent">AI</span></span>
         </div>
@@ -32,11 +32,6 @@
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
-
-      <!-- 新增會議按鈕 -->
-      <button class="btn-primary btn-new-meeting" id="newMeetingBtn">
-        <i class="fa-solid fa-plus"></i> 新增會議紀錄
-      </button>
 
       <!-- 返回首頁按鈕 -->
       <button class="btn-secondary btn-go-home" id="goHomeBtn">
@@ -59,9 +54,12 @@
         </div>
       </div>
 
-      <!-- 設定區（API Key 設定） -->
-      <div class="sidebar-footer">
-        <button class="btn-secondary btn-settings" id="settingsBtn">
+      <!-- 設定區（API Key 設定與使用說明） -->
+      <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+        <button class="btn-secondary btn-settings" id="instructionsBtn" style="justify-content: flex-start;">
+          <i class="fa-solid fa-circle-info"></i> 使用說明
+        </button>
+        <button class="btn-secondary btn-settings" id="settingsBtn" style="justify-content: flex-start;">
           <i class="fa-solid fa-gear"></i> 設定 API 金鑰
         </button>
       </div>
@@ -72,12 +70,17 @@
       <button class="btn-icon" id="menuToggleBtn">
         <i class="fa-solid fa-bars"></i>
       </button>
-      <div class="mobile-logo">
+      <div class="mobile-logo" title="RECO AI - 您的智慧會議工具。支援無限制的高精度錄音轉譯、說話者識別、重點摘要，並配備類似 NotebookLM 的 AI 筆記助理與備註卡片功能。">
         <i class="fa-solid fa-microphone-lines"></i> RECO AI
       </div>
-      <button class="btn-icon" id="mobileSettingsBtn">
-        <i class="fa-solid fa-gear"></i>
-      </button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-icon" id="mobileAssistantBtn" title="開啟 AI 助理">
+          <i class="fa-solid fa-comments"></i>
+        </button>
+        <button class="btn-icon" id="mobileSettingsBtn" title="設定 API 金鑰">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </div>
     </header>
 
     <!-- 主要內容區 -->
@@ -255,6 +258,10 @@
         <button class="assistant-tab-btn" data-assistant-tab="tabNotes">
           <i class="fa-solid fa-note-sticky"></i> 備註卡片 <span class="badge" id="noteCount">0</span>
         </button>
+        <button class="btn-close-assistant" id="closeAssistantBtn" title="關閉助理">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
       </div>
 
       <div class="assistant-body">
@@ -333,6 +340,38 @@
       <div class="modal-footer">
         <button class="btn-secondary" id="cancelSettingsBtn">取消</button>
         <button class="btn-primary" id="saveSettingsBtn">儲存設定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用說明彈出視窗 -->
+  <div class="modal" id="instructionsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-circle-info"></i> RECO AI 使用說明</h2>
+        <button class="btn-close-modal" id="closeInstructionsModalBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>歡迎使用 RECO AI！這是一個專屬您的智慧會議工具。</strong></p>
+        <p>本程式支援無限制的高精度錄音轉譯、說話者識別、重點摘要，並配備類似 NotebookLM 的 AI 筆記助理與備註卡片功能。</p>
+        
+        <div class="guide-banner" style="margin-top: 10px;">
+          <h4>💡 核心功能介紹：</h4>
+          <ol>
+            <li><strong>高精度語音轉譯</strong>：支援上傳 MP3, WAV, M4A, WebM 等。AI 自動識別說話者並產生精準時間戳。</li>
+            <li><strong>點擊時間戳播放</strong>：點擊逐字稿中的時間戳，播放器會自動跳轉至該時間點播放，方便快速核對。</li>
+            <li><strong>AI 會議助理 (Q&A)</strong>：在右側面板中，可以詢問 AI 關於這場會議的任何細節與整理決議。</li>
+            <li><strong>備註卡片</strong>：隨時記錄並儲存與會議關聯的個人筆記、想法與追蹤事項。</li>
+          </ol>
+        </div>
+
+        <div class="guide-banner" style="margin-top: 15px;">
+          <h4>📱 手機使用小秘訣：</h4>
+          <p>在手機上開會時，建議使用手機內建的「語音備忘錄」進行背景錄音（鎖屏、切換 Line 都不會中斷）。錄製完後，直接用手機打開本網頁一鍵上傳轉譯！</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="closeInstructionsBtn">我瞭解了</button>
       </div>
     </div>
   </div>
