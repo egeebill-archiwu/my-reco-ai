@@ -742,7 +742,7 @@ async function triggerTranscription() {
     const langHint = el.languageHintSelect.value;
     
     // 3. 調用 API
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const prompt = `
       你是一個專業的會議逐字稿生成助理。請仔細聆聽這段音訊，並完成以下任務：
@@ -938,7 +938,7 @@ async function triggerSummaryGeneration(showAlert = true) {
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const formattedTranscript = currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n');
     
@@ -1104,7 +1104,7 @@ async function sendChatMessage() {
   const aiMessageId = appendChatMessage('ai', '<i class="fa-solid fa-spinner fa-spin"></i> AI 正在閱讀紀錄並思考中...');
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const formattedTranscript = currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n');
 
