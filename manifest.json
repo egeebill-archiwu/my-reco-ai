@@ -1,0 +1,18 @@
+{
+  "short_name": "RECO AI",
+  "name": "RECO AI - 智慧會議紀錄與筆記助理",
+  "description": "本地大容量儲存、Gemini 智慧逐字稿與 AI 筆記會議工具",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1082/1082823.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#0a0c10",
+  "theme_color": "#121620",
+  "display": "standalone",
+  "orientation": "portrait"
+}

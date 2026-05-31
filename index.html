@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RECO AI - 智慧會議紀錄與筆記助理</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <!-- iOS PWA 支持 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RECO AI">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1082/1082823.png">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 頂部與側邊導覽列 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fa-solid fa-microphone-lines logo-icon"></i>
+          <span>RECO <span class="logo-accent">AI</span></span>
+        </div>
+        <button class="btn-close-sidebar" id="closeSidebarBtn" title="關閉選單">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 新增會議按鈕 -->
+      <button class="btn-primary btn-new-meeting" id="newMeetingBtn">
+        <i class="fa-solid fa-plus"></i> 新增會議紀錄
+      </button>
+
+      <!-- 歷史會議列表 -->
+      <div class="history-section">
+        <div class="section-title">
+          <span>歷史會議</span>
+          <span class="badge" id="meetingCount">0</span>
+        </div>
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="searchMeetingsInput" placeholder="搜尋會議或逐字稿...">
+        </div>
+        <div class="meeting-list" id="meetingList">
+          <!-- 會議列表項目會動態插入 -->
+          <div class="empty-list-message">尚無會議紀錄</div>
+        </div>
+      </div>
+
+      <!-- 設定區（API Key 設定） -->
+      <div class="sidebar-footer">
+        <button class="btn-secondary btn-settings" id="settingsBtn">
+          <i class="fa-solid fa-gear"></i> 設定 API 金鑰
+        </button>
+      </div>
+    </aside>
+
+    <!-- 手機版頂部工具列 -->
+    <header class="mobile-header">
+      <button class="btn-icon" id="menuToggleBtn">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="mobile-logo">
+        <i class="fa-solid fa-microphone-lines"></i> RECO AI
+      </div>
+      <button class="btn-icon" id="mobileSettingsBtn">
+        <i class="fa-solid fa-gear"></i>
+      </button>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="main-content" id="mainContent">
+      <!-- 歡迎與新增會議區 (預設顯示) -->
+      <div class="view-panel welcome-view active" id="welcomeView">
+        <div class="welcome-card">
+          <h1>讓會議紀錄變得輕鬆優雅</h1>
+          <p class="welcome-desc">歡迎使用 RECO AI！這是一個專屬您的智慧會議工具。支援無限制的高精度錄音轉譯、說話者識別、重點摘要，並配備類似 NotebookLM 的 AI 筆記助理與備註卡片功能。</p>
+          
+          <div class="action-grid">
+            <!-- 錄音卡片 -->
+            <div class="action-card" id="actionRecord">
+              <div class="card-icon record-icon">
+                <i class="fa-solid fa-microphone"></i>
+              </div>
+              <h3>開始即時錄音</h3>
+              <p>在電腦或支援的設備上直接錄音，即時看見音波起伏，結束後一鍵轉譯。</p>
+              <button class="btn-card-action">開始錄音</button>
+            </div>
+
+            <!-- 上傳檔案卡片 -->
+            <div class="action-card" id="actionUpload">
+              <div class="card-icon upload-icon">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+              </div>
+              <h3>上傳會議音訊檔</h3>
+              <p>支援 MP3, WAV, M4A, WebM 等。特別適合在上傳手機語音備忘錄的錄音檔。</p>
+              <button class="btn-card-action">選擇檔案</button>
+            </div>
+          </div>
+
+          <div class="tip-banner">
+            <i class="fa-solid fa-circle-info"></i>
+            <div class="tip-text">
+              <strong>手機使用小秘訣</strong>：在手機上開會時，建議使用手機內建的「語音備忘錄」進行背景錄音（鎖屏、切換 Line 都不會中斷）。錄製完後，直接用手機打開本網頁一鍵上傳轉譯！
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 會議詳情工作區 (點擊會議或開始錄音後顯示) -->
+      <div class="view-panel detail-view" id="detailView">
+        <!-- 會議頂部資訊 -->
+        <div class="detail-header">
+          <div class="meeting-meta-edit">
+            <input type="text" id="meetingTitleInput" class="meeting-title-input" value="未命名會議">
+            <span class="meeting-date" id="meetingDateText">2026/05/31 15:00</span>
+          </div>
+          <div class="detail-actions">
+            <button class="btn-secondary" id="exportBtn" title="匯出會議紀錄">
+              <i class="fa-solid fa-file-export"></i> 匯出
+            </button>
+            <button class="btn-danger" id="deleteMeetingBtn" title="刪除會議紀錄">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 音訊播放器/錄音控制面板 -->
+        <div class="audio-control-panel">
+          <!-- 錄音中狀態 -->
+          <div class="recording-state hidden" id="recordingState">
+            <div class="visualizer-container">
+              <canvas id="visualizerCanvas"></canvas>
+            </div>
+            <div class="record-meta">
+              <span class="pulse-dot"></span>
+              <span class="timer" id="recordingTimer">00:00:00</span>
+            </div>
+            <div class="record-actions">
+              <button class="btn-round btn-warning" id="pauseRecordBtn" title="暫停/繼續">
+                <i class="fa-solid fa-pause"></i>
+              </button>
+              <button class="btn-round btn-danger" id="stopRecordBtn" title="結束並轉譯">
+                <i class="fa-solid fa-stop"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 播放音軌狀態 -->
+          <div class="player-state hidden" id="playerState">
+            <audio id="audioPlayer" controls></audio>
+            <div class="player-info">
+              <i class="fa-solid fa-music"></i>
+              <span id="audioFileName">meeting_audio.webm</span>
+            </div>
+          </div>
+
+          <!-- 尚未錄音/未上傳狀態 -->
+          <div class="no-audio-state" id="noAudioState">
+            <i class="fa-solid fa-audio-description"></i>
+            <span>本場會議無關聯的錄音檔（手動紀錄）</span>
+          </div>
+        </div>
+
+        <!-- 功能分頁按鈕 -->
+        <div class="tab-container">
+          <button class="tab-btn active" data-tab="tabTranscript">
+            <i class="fa-solid fa-quote-left"></i> 逐字稿
+          </button>
+          <button class="tab-btn" data-tab="tabSummary">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> AI 重點摘要
+          </button>
+        </div>
+
+        <!-- 分頁內容 -->
+        <div class="tab-content-wrapper">
+          <!-- 逐字稿分頁 -->
+          <div class="tab-pane active" id="tabTranscript">
+            <div class="transcribe-status-banner hidden" id="transcribeStatusBanner">
+              <div class="spinner"></div>
+              <div class="status-text">
+                <strong id="transcribeStatusText">AI 正在努力轉寫中...</strong>
+                <p id="transcribeProgressDetail">這可能需要幾分鐘，請勿關閉網頁。</p>
+              </div>
+            </div>
+
+            <div class="transcript-controls" id="transcriptControls">
+              <div class="lang-selector">
+                <label for="languageHintSelect">語言提示：</label>
+                <select id="languageHintSelect">
+                  <option value="繁體中文">繁體中文 (台灣習慣)</option>
+                  <option value="中英夾雜">中英夾雜</option>
+                  <option value="英文">英文 (English)</option>
+                  <option value="台語與繁體中文">台語與繁體中文</option>
+                </select>
+              </div>
+              <button class="btn-secondary" id="reTranscribeBtn">
+                <i class="fa-solid fa-rotate"></i> 重新轉譯
+              </button>
+            </div>
+
+            <div class="transcript-container" id="transcriptContainer">
+              <!-- 逐字稿內容會動態插入 -->
+              <div class="empty-transcript-message">
+                <i class="fa-solid fa-language"></i>
+                <p>尚無逐字稿。請上傳音訊檔案或開始錄音來生成逐字稿。</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI 摘要分頁 -->
+          <div class="tab-pane" id="tabSummary">
+            <div class="summary-container">
+              <div class="summary-section">
+                <h2><i class="fa-solid fa-list-check"></i> 會議摘要</h2>
+                <div class="markdown-body" id="aiSummaryText">
+                  <!-- AI 摘要 Markdown 渲染 -->
+                  <p class="placeholder-text">點擊下方按鈕或轉譯完成後，AI 將自動生成會議摘要。</p>
+                </div>
+              </div>
+              <div class="summary-section">
+                <h2><i class="fa-solid fa-circle-exclamation"></i> 待辦清單 (Action Items)</h2>
+                <div class="markdown-body" id="aiActionItemsText">
+                  <!-- AI 待辦事項 Markdown 渲染 -->
+                  <p class="placeholder-text">待辦清單將與摘要一同生成。</p>
+                </div>
+              </div>
+              <button class="btn-primary" id="regenerateSummaryBtn">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> 重新生成 AI 摘要與待辦
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右側 AI 筆記與問答面板 (NotebookLM 助理) -->
+    <section class="assistant-panel" id="assistantPanel">
+      <div class="assistant-header">
+        <button class="assistant-tab-btn active" data-assistant-tab="tabChat">
+          <i class="fa-solid fa-comments"></i> AI 會議助理
+        </button>
+        <button class="assistant-tab-btn" data-assistant-tab="tabNotes">
+          <i class="fa-solid fa-note-sticky"></i> 備註卡片 <span class="badge" id="noteCount">0</span>
+        </button>
+      </div>
+
+      <div class="assistant-body">
+        <!-- AI 對話分頁 -->
+        <div class="assistant-pane active" id="assistantTabChat">
+          <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+              <div class="system-message">
+                你好！我是您的會議筆記助理。您可以詢問我關於這場會議的任何細節。
+                <br><br>
+                💡 例如你可以問：
+                <ul>
+                  <li>「今天會議討論的重點與決議是什麼？」</li>
+                  <li>「說話者 A 在會議中對預算有什麼看法？」</li>
+                  <li>「請幫我整理一份今天會議中決定的待辦清單。」</li>
+                </ul>
+              </div>
+            </div>
+            <div class="chat-input-area">
+              <textarea id="chatInput" placeholder="詢問關於這場會議的問題..."></textarea>
+              <button class="btn-round btn-primary" id="sendChatBtn" title="發送訊息">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 備註卡片分頁 -->
+        <div class="assistant-pane" id="assistantTabNotes">
+          <div class="notes-container">
+            <div class="note-creator">
+              <textarea id="noteInput" placeholder="輸入個人筆記、備忘錄、或需要追蹤的事項..."></textarea>
+              <button class="btn-primary" id="addNoteBtn">
+                <i class="fa-solid fa-pencil"></i> 新增筆記卡片
+              </button>
+            </div>
+            <div class="notes-list" id="notesList">
+              <!-- 備註卡片動態載入 -->
+              <div class="empty-notes-message">尚無備註卡片。您可以在這裡記錄與本次會議相關的個人想法。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 隱藏的檔案上傳輸入框 -->
+  <input type="file" id="fileUploadInput" accept="audio/*" class="hidden">
+
+  <!-- API Key 設定彈出視窗 -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-key"></i> Gemini API 設定</h2>
+        <button class="btn-close-modal" id="closeModalBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p>本專案採用 <strong>Google Gemini 1.5 Flash API</strong> 直接在瀏覽器端進行高精準度的語音轉譯、說話者識別與 AI 會議摘要。這對個人使用是 <strong>完全免費</strong> 的。</p>
+        
+        <div class="form-group">
+          <label for="apiKeyInput">Gemini API Key：</label>
+          <input type="password" id="apiKeyInput" placeholder="請貼上您的 AI Studio API 金鑰 (AIzaSy...)">
+          <p class="help-text">金鑰僅會儲存在您的瀏覽器本地 `localStorage`，不會被上傳到任何第三方伺服器，安全且保密。</p>
+        </div>
+
+        <div class="guide-banner">
+          <h4>如何取得免費的 Gemini API Key？</h4>
+          <ol>
+            <li>點擊前往 <a href="https://aistudio.google.com/" target="_blank">Google AI Studio <i class="fa-solid fa-up-right-from-square"></i></a>。</li>
+            <li>登入您的 Google 帳號。</li>
+            <li>點擊左上角的 <strong>"Get API key"</strong> 按鈕。</li>
+            <li>建立並複製您的 API Key，然後貼在上方輸入框中保存。</li>
+          </ol>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="cancelSettingsBtn">取消</button>
+        <button class="btn-primary" id="saveSettingsBtn">儲存設定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自訂 Toast 提示 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- JavaScript Entrypoint -->
+  <script src="app.js" type="module"></script>
+</body>
+</html>
