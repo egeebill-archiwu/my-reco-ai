@@ -1,7 +1,7 @@
 // RECO AI - IndexedDB 本地資料庫模組
 
 const DB_NAME = 'reco_ai_database';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise = null;
 

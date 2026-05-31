@@ -1199,7 +1199,10 @@ function parseMarkdown(md) {
 
 // ==================== AI Chat 助理 (NotebookLM Q&A) ====================
 async function sendChatMessage() {
-  if (!currentMeeting) return;
+  if (!currentMeeting) {
+    showToast('請先選擇或建立會議紀錄，才能與 AI 助理對話。', 'error');
+    return;
+  }
   const question = el.chatInput.value.trim();
   if (!question) return;
 
@@ -1377,7 +1380,10 @@ async function loadNoteCards(meetingId) {
 }
 
 async function addNewNoteCard() {
-  if (!currentMeeting) return;
+  if (!currentMeeting) {
+    showToast('請先選擇或建立會議紀錄，再新增備註卡片！', 'error');
+    return;
+  }
   const content = el.noteInput.value.trim();
   if (!content) return;
 
