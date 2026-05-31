@@ -1476,12 +1476,17 @@ audio {
 
 /* ==================== 響應式切換與手機版 (Mobile) ==================== */
 @media (max-width: 1024px) {
+  :root {
+    --header-height: calc(60px + env(safe-area-inset-top));
+  }
+
   .app-container {
     flex-direction: column;
   }
 
   .mobile-header {
     display: flex;
+    padding: env(safe-area-inset-top) 16px 0 16px;
   }
 
   .sidebar {
@@ -1492,6 +1497,7 @@ audio {
     height: 100%;
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
     z-index: 2000;
+    padding: calc(20px + env(safe-area-inset-top)) 20px 20px 20px;
   }
 
   .sidebar.active {
