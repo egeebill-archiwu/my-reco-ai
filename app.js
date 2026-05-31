@@ -266,6 +266,25 @@ async function refreshMeetingList() {
   }
 }
 
+/**
+ * 搜尋過濾歷史會議列表
+ */
+function filterMeetings() {
+  const query = el.searchMeetingsInput.value.toLowerCase().trim();
+  const items = el.meetingList.querySelectorAll('.meeting-item');
+
+  items.forEach(item => {
+    const title = item.querySelector('h4').textContent.toLowerCase();
+    const meta = item.querySelector('.meeting-item-meta').textContent.toLowerCase();
+    
+    if (title.includes(query) || meta.includes(query)) {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
 async function loadMeeting(id) {
   try {
     // 關閉手機版選單
