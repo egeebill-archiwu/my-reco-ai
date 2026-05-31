@@ -1152,8 +1152,11 @@ audio {
 .assistant-pane {
   display: none;
   flex-direction: column;
-  flex-grow: 1;
-  min-height: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow: hidden;
 }
 
@@ -1165,8 +1168,7 @@ audio {
 .chat-container {
   display: flex;
   flex-direction: column;
-  flex-grow: 1;
-  min-height: 0;
+  height: 100%;
 }
 
 .chat-messages {

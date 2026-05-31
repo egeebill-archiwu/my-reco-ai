@@ -1084,7 +1084,18 @@ async function triggerSummaryGeneration(showAlert = true) {
     });
 
     if (!response.ok) {
-      throw new Error(`AI 生成摘要失敗: ${response.statusText}`);
+      let errDetail = '';
+      try {
+        const errJson = await response.json();
+        errDetail = errJson.error?.message || JSON.stringify(errJson);
+      } catch (e) {
+        try {
+          errDetail = await response.text();
+        } catch (e2) {
+          errDetail = response.statusText;
+        }
+      }
+      throw new Error(`AI 生成摘要失敗 (${response.status}): ${errDetail}`);
     }
 
     const result = await response.json();
@@ -1260,7 +1271,18 @@ async function sendChatMessage() {
     });
 
     if (!response.ok) {
-      throw new Error(`AI 對話回應失敗: ${response.statusText}`);
+      let errDetail = '';
+      try {
+        const errJson = await response.json();
+        errDetail = errJson.error?.message || JSON.stringify(errJson);
+      } catch (e) {
+        try {
+          errDetail = await response.text();
+        } catch (e2) {
+          errDetail = response.statusText;
+        }
+      }
+      throw new Error(`AI 對話回應失敗 (${response.status}): ${errDetail}`);
     }
 
     const result = await response.json();
