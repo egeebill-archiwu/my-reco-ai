@@ -28,6 +28,9 @@ const el = {
   closeSidebarBtn: document.getElementById('closeSidebarBtn'),
   menuToggleBtn: document.getElementById('menuToggleBtn'),
   newMeetingBtn: document.getElementById('newMeetingBtn'),
+  goHomeBtn: document.getElementById('goHomeBtn'),
+  logo: document.querySelector('.logo'),
+  mobileLogo: document.querySelector('.mobile-logo'),
   meetingCount: document.getElementById('meetingCount'),
   searchMeetingsInput: document.getElementById('searchMeetingsInput'),
   meetingList: document.getElementById('meetingList'),
@@ -95,6 +98,15 @@ const el = {
 
 // ==================== 頁面初始化 ====================
 document.addEventListener('DOMContentLoaded', async () => {
+  // 阻擋 iOS 系統縮放手勢與多指縮放
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
   // 初始化畫布尺寸
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
@@ -128,6 +140,11 @@ function setupEventListeners() {
   el.menuToggleBtn.addEventListener('click', () => el.sidebar.classList.add('active'));
   el.closeSidebarBtn.addEventListener('click', () => el.sidebar.classList.remove('active'));
   
+  // 返回首頁
+  if (el.goHomeBtn) el.goHomeBtn.addEventListener('click', showWelcomeView);
+  if (el.logo) el.logo.addEventListener('click', showWelcomeView);
+  if (el.mobileLogo) el.mobileLogo.addEventListener('click', showWelcomeView);
+
   // 新增會議
   el.newMeetingBtn.addEventListener('click', createNewMeetingOffline);
   el.actionRecord.addEventListener('click', startRecordingWorkflow);
@@ -437,6 +454,18 @@ async function deleteCurrentMeeting() {
   }
 }
 
+async function showWelcomeView() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    showToast('請先結束當前錄音！', 'error');
+    return;
+  }
+  currentMeeting = null;
+  await refreshMeetingList();
+  el.detailView.classList.remove('active');
+  el.welcomeView.classList.add('active');
+  el.sidebar.classList.remove('active'); // 關閉手機側邊欄
+}
+
 // ==================== 錄音流程 ====================
 async function startRecordingWorkflow() {
   // 檢查 API 金鑰是否存在
@@ -645,6 +674,39 @@ function drawVisualizer() {
   draw();
 }
 
+// 輔助方法：對上傳檔案 (特別是 iOS Safari/Chrome 的 m4a) 的 MIME Type 進行安全過濾與規範化映射
+function sanitizeAudioMimeType(file) {
+  let mime = file.type;
+  const name = file.name ? file.name.toLowerCase() : '';
+  const ext = name.split('.').pop();
+  
+  console.log(`Original file name: ${file.name}, type: ${mime}, ext: ${ext}`);
+
+  // 若 MIME 為空、通用流或未知，依據副檔名進行映射
+  if (!mime || mime === '' || mime.includes('octet-stream')) {
+    if (ext === 'mp3') return 'audio/mp3';
+    if (ext === 'wav') return 'audio/wav';
+    if (ext === 'm4a') return 'audio/m4a';
+    if (ext === 'mp4') return 'audio/mp4';
+    if (ext === 'aac') return 'audio/aac';
+    if (ext === 'webm') return 'audio/webm';
+    if (ext === 'ogg') return 'audio/ogg';
+    if (ext === 'flac') return 'audio/flac';
+    if (ext === 'amr') return 'audio/amr';
+    return 'audio/webm'; // 預設值
+  }
+
+  // 標準化非標準 MIME 字串
+  mime = mime.toLowerCase();
+  if (mime === 'audio/x-m4a' || mime === 'audio/m4a') return 'audio/m4a';
+  if (mime === 'audio/x-aac' || mime === 'audio/aac') return 'audio/aac';
+  if (mime === 'audio/x-wav' || mime === 'audio/wave' || mime === 'audio/wav') return 'audio/wav';
+  if (mime === 'audio/mpeg' || mime === 'audio/mp3') return 'audio/mp3';
+  if (mime === 'audio/x-flac' || mime === 'audio/flac') return 'audio/flac';
+
+  return mime;
+}
+
 // ==================== 音訊檔案上傳流程 ====================
 async function handleFileUpload(event) {
   const file = event.target.files[0];
@@ -671,7 +733,7 @@ async function handleFileUpload(event) {
     created_at: createdAt,
     audioData: file,
     audioName: file.name,
-    audioMime: file.type || 'audio/webm',
+    audioMime: sanitizeAudioMimeType(file),
     transcript: [],
     summary: '',
     action_items: ''

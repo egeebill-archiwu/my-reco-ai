@@ -4,10 +4,20 @@
   "description": "本地大容量儲存、Gemini 智慧逐字稿與 AI 筆記會議工具",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1082/1082823.png",
-      "type": "image/png",
-      "sizes": "512x512",
+      "src": "./icon.jpg",
+      "type": "image/jpeg",
+      "sizes": "1024x1024",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./icon.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    },
+    {
+      "src": "./icon.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
     }
   ],
   "start_url": "./index.html",

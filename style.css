@@ -42,6 +42,11 @@
   padding: 0;
 }
 
+html, body {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -121,6 +126,12 @@ a:hover {
   font-weight: 800;
   font-size: 22px;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.8;
 }
 
 .logo-icon {
@@ -173,8 +184,15 @@ a:hover {
 
 .btn-new-meeting {
   width: 100%;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.btn-go-home {
+  width: 100%;
   margin-bottom: 24px;
   font-size: 15px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .btn-secondary {
@@ -445,6 +463,12 @@ a:hover {
   font-family: var(--font-title);
   font-weight: 800;
   font-size: 18px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.mobile-logo:hover {
+  opacity: 0.8;
 }
 
 /* ==================== 主要內容區 (Main Content) ==================== */

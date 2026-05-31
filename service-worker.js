@@ -1,11 +1,12 @@
 // RECO AI - PWA Service Worker (支援離線啟動)
-const CACHE_NAME = 'reco-ai-cache-v1';
+const CACHE_NAME = 'reco-ai-cache-v2';
 const ASSETS = [
   './index.html',
   './style.css',
   './db.js',
   './app.js',
   './manifest.json',
+  './icon.jpg',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
