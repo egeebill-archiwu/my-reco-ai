@@ -1064,14 +1064,25 @@ async function triggerTranscription() {
     console.error('轉譯失敗:', err);
     showToast(`語音轉譯失敗：${err.message}`, 'error');
 
+    let helpTip = '';
+    if (err.message.includes('429') || err.message.toLowerCase().includes('quota')) {
+      helpTip = `
+        <div style="margin-top: 14px; padding: 10px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 6px; text-align: left; font-size: 0.85rem; color: #38bdf8; line-height: 1.5;">
+          <i class="fa-solid fa-lightbulb"></i> <strong>提示：</strong>您遇到了 Google Gemini API 的額度超限限制 (429 錯誤)。
+          <br>如果您在設定中選擇了 <strong>Gemini 2.5 Flash</strong>，請點選右上角齒輪設定，將模型改為 <strong>Gemini 1.5 Flash</strong> 或 <strong>2.5 Flash-Lite</strong>（它們每日提供 1500 次免費額度，而 2.5 Flash 僅有 20 次限制）。或者您也可以嘗試更換 API Key 或稍後再試。
+        </div>
+      `;
+    }
+
     // 將詳細錯誤渲染到逐字稿容器中，方便使用者排查問題與重新執行
     el.transcriptContainer.innerHTML = `
       <div class="empty-transcript-message" style="padding: 30px 15px;">
         <i class="fa-solid fa-circle-exclamation" style="color: #ef4444; font-size: 2.5rem; margin-bottom: 12px;"></i>
         <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px; font-size: 1.1rem;">語音轉譯失敗</p>
-        <p style="font-size: 0.9rem; color: var(--text-secondary); max-width: 85%; text-align: center; line-height: 1.5; margin-bottom: 16px; word-break: break-all;">
+        <div style="font-size: 0.9rem; color: var(--text-secondary); max-width: 85%; text-align: center; line-height: 1.5; margin-bottom: 16px; word-break: break-all; margin-left: auto; margin-right: auto;">
           錯誤詳情：${escapeHtml(err.message)}
-        </p>
+          ${helpTip}
+        </div>
         <button class="btn-secondary" id="errorRetryBtn" style="padding: 8px 16px;">
           <i class="fa-solid fa-rotate"></i> 重新嘗試轉譯
         </button>

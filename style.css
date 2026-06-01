@@ -1908,6 +1908,38 @@ audio {
 
 /* ==================== 簡報與總覽列印 PDF 樣式 ==================== */
 @media print {
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    background: #ffffff !important;
+  }
+  
+  .app-container, 
+  .main-content, 
+  .tab-content-wrapper, 
+  .tab-pane, 
+  .summary-container, 
+  .summary-section, 
+  .slides-viewer-wrapper, 
+  .slides-carousel, 
+  .slides-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+
   /* 1. 預設/PPT 簡報列印模式：當 body 沒有被設為 print-mode-onepage 時，預設列印 6 頁簡報 */
   body:not(.print-mode-onepage) * {
     visibility: hidden;
@@ -1969,6 +2001,10 @@ audio {
     print-color-adjust: exact !important;
   }
 
+  body:not(.print-mode-onepage) .slide-card-body {
+    overflow: visible !important;
+  }
+
   body:not(.print-mode-onepage) .slide-card-header h3 {
     color: #38bdf8 !important;
     -webkit-text-fill-color: #38bdf8 !important;
@@ -1982,6 +2018,13 @@ audio {
   body.print-mode-onepage {
     background: #ffffff !important;
     color: #0f172a !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   body.print-mode-onepage .app-container,
