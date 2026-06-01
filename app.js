@@ -947,8 +947,15 @@ async function triggerTranscription() {
     // 1. 將音訊轉換為 Base64
     const base64Audio = await blobToBase64(currentMeeting.audioData);
     
-    // 2. 確定語系提示
+    // 2. 確定語系提示與對應的 Prompt 規則
     const langHint = el.languageHintSelect.value;
+    let languageRule4 = `逐字稿內容（text）請使用台灣的繁體中文習慣。若語音中出現英文、術語或多國語言，請精準保留，並確保拼音與用詞正確。`;
+    let languageRule5 = `主要識別語言提示：${langHint}。`;
+
+    if (langHint === '混合多國語言模式 (中/英/台語等混合)') {
+      languageRule4 = `逐字稿內容（text）請原汁原味地記錄每位說話者所使用的原始語系（英文寫英文、中文寫繁體中文、台語用台語漢字或羅馬拼音），切勿將不同語言強行翻譯或統一轉換為單一語系。`;
+      languageRule5 = `主要識別語言提示：多國語言混合模式（包含中/英/台語等混合發言）。`;
+    }
     
     // 3. 調用 API
     const model = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
@@ -960,9 +967,8 @@ async function triggerTranscription() {
       1. 細緻識別出不同的說話者（依據音色、語氣、上下文邏輯進行區分），並用 "說話者 A", "說話者 B", "說話者 C" 這樣統一的代號標註。如果知道是特定人名，可以寫人名，但必須前後一致。
       2. 每段對話必須包含精確的開始時間（start）與結束時間（end），時間戳格式為 MM:SS 或 HH:MM:SS（如 00:03, 02:45, 01:12:05）。
       3. 語意轉換或換人說話時必須分段。
-      4. 逐字稿內容（text）請使用台灣的繁體中文習慣。若語音中出現英文、術語或多國語言，請精準保留，並確保拼音與用詞正確。
-      5. 主要識別語言提示：${langHint}。
-      特別說明：如果選擇的語言提示為「混合多國語言模式 (中/英/台語等混合)」，代表本會議包含中/英/台語等多種發言，請務必原汁原味以各自說話者所使用的語系記錄，切勿強行翻譯轉換。
+      4. ${languageRule4}
+      5. ${languageRule5}
     `;
 
     // 結構化輸出 schema
