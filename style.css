@@ -1072,6 +1072,15 @@ audio {
   color: var(--text-primary);
 }
 
+.markdown-desc {
+  margin-left: 20px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin-top: -6px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
 /* ==================== 助理面板 (Assistant Panel) ==================== */
 .assistant-panel {
   width: var(--assistant-width);
@@ -2110,6 +2119,15 @@ audio {
   body.print-mode-onepage .print-content p {
     margin-top: 0 !important;
     margin-bottom: 8px !important;
+  }
+
+  body.print-mode-onepage .print-content .markdown-desc {
+    margin-left: 6mm !important;
+    color: #475569 !important;
+    font-size: 9.5pt !important;
+    margin-top: -6px !important;
+    margin-bottom: 8px !important;
+    line-height: 1.4 !important;
   }
 
   body.print-mode-onepage .print-content ul,

@@ -1167,8 +1167,9 @@ async function triggerSummaryGeneration(showAlert = true) {
     const formattedTranscript = currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n');
     
     const prompt = `
-      你是一位專業的行政與專案管理助理。請仔細閱讀以下會議的逐字稿內容，並完成以下任務：
+      定你是一位專業的行政與專案管理助理。請仔細閱讀以下會議的逐字稿內容，並完成以下任務：
       1. 生成精確的會議摘要（包含：會議主旨、主要討論議題、關鍵決議點）。使用漂亮的 Markdown 語法（善用標題、清單與粗體標記）。
+         【排版規範】：在「主要討論議題」中，請使用無序清單格式（例如：- **議題主題**：該議題的討論要點與細節描述），確保每個議題主題與其描述內容都寫在同一個清單項目 (li) 中在同一行完成，切勿換行或單獨使用冒號起行，以保持版面整潔。
       2. 整理一份清晰的待辦清單 (Action Items)（包含：執行人、具體任務內容、期限，若逐字稿有提及）。每個任務前請使用 - [ ] 語法格式化。
       
       請一律使用台灣習慣的繁體中文。
@@ -1298,13 +1299,18 @@ function parseMarkdown(md) {
   // 4. 處理粗體
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-  // 5. 換行處理 (將非標題和非清單行轉為段落)
+  // 5. 換行處理 (將非標題和非清單行轉為段落，並處理冒號開頭的說明行)
   const lines = html.split('\n');
   const renderedLines = lines.map(line => {
     const trimmed = line.trim();
     if (!trimmed) return '';
     if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<li') || trimmed.startsWith('<p') || trimmed.startsWith('</ul')) {
       return line;
+    }
+    // 若行首為冒號，視為上文的延伸說明，進行縮排排版
+    if (trimmed.startsWith(':') || trimmed.startsWith('：')) {
+      const cleanText = trimmed.replace(/^[:：]\s*/, '');
+      return `<p class="markdown-desc">${cleanText}</p>`;
     }
     return `<p>${line}</p>`;
   });
