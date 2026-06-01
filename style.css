@@ -1884,36 +1884,74 @@ audio {
   border-radius: 4px;
 }
 
-/* ==================== 簡報列印 PDF 樣式 ==================== */
+/* ==================== 錄音與上傳專屬教學連結 ==================== */
+.ios-guide-link {
+  font-size: 0.85rem;
+  color: var(--accent-blue);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ios-guide-link:hover {
+  color: var(--accent-purple);
+  text-decoration: underline;
+}
+
+.a4-print-container {
+  display: none !important;
+}
+
+/* ==================== 簡報與總覽列印 PDF 樣式 ==================== */
 @media print {
-  body * {
+  /* 1. 預設/PPT 簡報列印模式：當 body 沒有被設為 print-mode-onepage 時，預設列印 6 頁簡報 */
+  body:not(.print-mode-onepage) * {
     visibility: hidden;
   }
-  #fakeLockScreen, .sidebar, .mobile-header, .detail-header, .audio-control-panel, .tab-container, .transcript-controls, .assistant-panel, #toastContainer, #settingsModal, #instructionsModal {
+  
+  body:not(.print-mode-onepage) #fakeLockScreen, 
+  body:not(.print-mode-onepage) .sidebar, 
+  body:not(.print-mode-onepage) .mobile-header, 
+  body:not(.print-mode-onepage) .detail-header, 
+  body:not(.print-mode-onepage) .audio-control-panel, 
+  body:not(.print-mode-onepage) .tab-container, 
+  body:not(.print-mode-onepage) .transcript-controls, 
+  body:not(.print-mode-onepage) .assistant-panel, 
+  body:not(.print-mode-onepage) #toastContainer, 
+  body:not(.print-mode-onepage) #settingsModal, 
+  body:not(.print-mode-onepage) #instructionsModal,
+  body:not(.print-mode-onepage) .a4-print-container {
     display: none !important;
   }
   
-  .slides-viewer-wrapper, .slides-viewer-wrapper * {
-    visibility: visible;
+  body:not(.print-mode-onepage) .slides-viewer-wrapper, 
+  body:not(.print-mode-onepage) .slides-viewer-wrapper * {
+    visibility: visible !important;
   }
   
-  .slides-carousel {
+  body:not(.print-mode-onepage) .slides-carousel {
     display: block !important;
     width: 100% !important;
   }
   
-  .btn-carousel-ctrl, .slide-indicators, button {
+  body:not(.print-mode-onepage) .btn-carousel-ctrl, 
+  body:not(.print-mode-onepage) .slide-indicators, 
+  body:not(.print-mode-onepage) button {
     display: none !important;
   }
   
-  .slides-container {
+  body:not(.print-mode-onepage) .slides-container {
     display: block !important;
     height: auto !important;
     overflow: visible !important;
     box-shadow: none !important;
   }
   
-  .slide-card {
+  body:not(.print-mode-onepage) .slide-card {
     position: relative !important;
     display: flex !important;
     opacity: 1 !important;
@@ -1931,12 +1969,158 @@ audio {
     print-color-adjust: exact !important;
   }
 
-  .slide-card-header h3 {
+  body:not(.print-mode-onepage) .slide-card-header h3 {
     color: #38bdf8 !important;
     -webkit-text-fill-color: #38bdf8 !important;
   }
 
-  .slide-card-body li {
+  body:not(.print-mode-onepage) .slide-card-body li {
     color: #e2e8f0 !important;
+  }
+
+  /* 2. A4一頁總覽列印模式：當 body 被設為 print-mode-onepage 時 */
+  body.print-mode-onepage {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  body.print-mode-onepage .app-container,
+  body.print-mode-onepage #settingsModal,
+  body.print-mode-onepage #instructionsModal,
+  body.print-mode-onepage #iosVoiceMemoModal {
+    display: none !important;
+  }
+
+  body.print-mode-onepage .a4-print-container,
+  body.print-mode-onepage .a4-print-container * {
+    visibility: visible !important;
+    display: block !important;
+  }
+
+  body.print-mode-onepage .a4-print-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+  }
+
+  body.print-mode-onepage .print-onepage-layout {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif !important;
+    color: #1e293b !important;
+    padding: 10mm !important;
+    box-sizing: border-box !important;
+  }
+
+  body.print-mode-onepage .print-header {
+    border-bottom: 2px solid #0284c7 !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 20px !important;
+  }
+
+  body.print-mode-onepage .print-logo {
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    color: #0284c7 !important;
+    margin-bottom: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  body.print-mode-onepage .print-header h1 {
+    font-size: 20pt !important;
+    margin: 0 0 8px 0 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+  }
+
+  body.print-mode-onepage .print-meta {
+    font-size: 9.5pt !important;
+    color: #64748b !important;
+  }
+
+  body.print-mode-onepage .print-section {
+    margin-bottom: 20px !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.print-mode-onepage .print-section h3 {
+    font-size: 13pt !important;
+    color: #0f172a !important;
+    border-left: 4px solid #0284c7 !important;
+    padding-left: 8px !important;
+    margin: 0 0 10px 0 !important;
+    font-weight: 600 !important;
+  }
+
+  body.print-mode-onepage .print-content {
+    font-size: 10pt !important;
+    color: #334155 !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    padding: 12px 16px !important;
+  }
+
+  body.print-mode-onepage .print-content p {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.print-mode-onepage .print-content ul,
+  body.print-mode-onepage .print-content ol {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+    padding-left: 20px !important;
+  }
+
+  body.print-mode-onepage .print-content li {
+    margin-bottom: 4px !important;
+  }
+
+  body.print-mode-onepage .print-notes-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  body.print-mode-onepage .print-note-card {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    padding: 8px 12px !important;
+    font-size: 9.5pt !important;
+    page-break-inside: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  body.print-mode-onepage .print-note-text {
+    margin: 0 0 6px 0 !important;
+    color: #334155 !important;
+    white-space: pre-wrap !important;
+  }
+
+  body.print-mode-onepage .print-note-time {
+    font-size: 8pt !important;
+    color: #94a3b8 !important;
+    margin-top: auto !important;
+  }
+
+  body.print-mode-onepage .no-notes {
+    font-style: italic !important;
+    color: #94a3b8 !important;
+    margin: 0 !important;
+  }
+
+  body.print-mode-onepage .print-footer {
+    border-top: 1px solid #e2e8f0 !important;
+    padding-top: 8px !important;
+    margin-top: 24px !important;
+    text-align: center !important;
+    font-size: 8pt !important;
+    color: #94a3b8 !important;
   }
 }

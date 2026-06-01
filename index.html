@@ -109,14 +109,10 @@
               </div>
               <h3>上傳會議音訊檔</h3>
               <p>支援 MP3, WAV, M4A, WebM 等。特別適合在上傳手機語音備忘錄的錄音檔。</p>
-              <button class="btn-card-action">選擇檔案</button>
-            </div>
-          </div>
-
-          <div class="tip-banner">
-            <i class="fa-solid fa-circle-info"></i>
-            <div class="tip-text">
-              <strong>手機使用小秘訣</strong>：在手機上開會時，建議使用手機內建的「語音備忘錄」進行背景錄音（鎖屏、切換 Line 都不會中斷）。錄製完後，直接用手機打開本網頁一鍵上傳轉譯！
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
+                <button class="btn-card-action">選擇檔案</button>
+                <a href="#" id="iosVoiceMemoGuideBtn" class="ios-guide-link"><i class="fa-solid fa-circle-question"></i> iPhone 語音備忘錄上傳教學</a>
+              </div>
             </div>
           </div>
         </div>
@@ -206,6 +202,7 @@
               <div class="lang-selector">
                 <label for="languageHintSelect">語言提示：</label>
                 <select id="languageHintSelect">
+                  <option value="混合多國語言模式 (中/英/台語等混合)">混合多國語言模式 (中/英/台語等混合)</option>
                   <option value="繁體中文">繁體中文 (台灣習慣)</option>
                   <option value="中英夾雜">中英夾雜</option>
                   <option value="英文">英文 (English)</option>
@@ -264,13 +261,20 @@
                   <div class="slide-indicators" id="slideIndicators">
                     <!-- 指示點會動態生成 -->
                   </div>
-                  <div style="display: flex; gap: 10px; margin-top: 16px; width: 100%;">
-                    <button class="btn-secondary" id="regenerateSlidesBtn" style="flex: 1;">
-                      <i class="fa-solid fa-rotate"></i> 重新生成簡報
-                    </button>
-                    <button class="btn-primary" id="exportSlidesBtn" style="flex: 1;">
-                      <i class="fa-solid fa-file-pdf"></i> 匯出簡報 (PDF)
-                    </button>
+                  <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px; width: 100%;">
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                      <button class="btn-secondary" id="regenerateSlidesBtn" style="flex: 1;">
+                        <i class="fa-solid fa-rotate"></i> 重新生成簡報
+                      </button>
+                    </div>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                      <button class="btn-primary" id="exportOnepageBtn" style="flex: 1;">
+                        <i class="fa-solid fa-file-invoice"></i> A4 一頁總覽 (PDF)
+                      </button>
+                      <button class="btn-primary" id="exportSlidesBtn" style="flex: 1; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); border: none;">
+                        <i class="fa-solid fa-file-powerpoint"></i> PPT 六頁簡報 (PDF)
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -434,6 +438,59 @@
       </div>
     </div>
   </div>
+
+  <!-- iPhone 語音備忘錄上傳指引彈出視窗 -->
+  <div class="modal" id="iosVoiceMemoModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-mobile-screen-button"></i> iPhone 語音備忘錄上傳指引</h2>
+        <button class="btn-close-modal" id="closeIosVoiceMemoModalBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="text-align: left; line-height: 1.6;">
+        <p>由於 iOS 系統的安全限制，瀏覽器的檔案選擇器<strong>無法直接存取</strong>內建的「語音備忘錄」音檔。請按照以下步驟進行「串接上傳」：</p>
+        
+        <div class="guide-steps" style="margin-top: 15px; display: flex; flex-direction: column; gap: 15px;">
+          <div class="guide-step" style="display: flex; gap: 12px; align-items: flex-start;">
+            <div class="step-num" style="background: var(--accent-blue); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">1</div>
+            <div>
+              <strong>開啟手機的「語音備忘錄」App</strong>
+              <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">找到您錄製好的會議語音檔案。</p>
+            </div>
+          </div>
+          
+          <div class="guide-step" style="display: flex; gap: 12px; align-items: flex-start;">
+            <div class="step-num" style="background: var(--accent-blue); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">2</div>
+            <div>
+              <strong>點擊錄音檔旁的「...」按鈕</strong>
+              <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">點選該錄音項目，點擊右上角或下方的「...」或「分享」圖示。</p>
+            </div>
+          </div>
+          
+          <div class="guide-step" style="display: flex; gap: 12px; align-items: flex-start;">
+            <div class="step-num" style="background: var(--accent-blue); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">3</div>
+            <div>
+              <strong>選擇「儲存至『檔案』」</strong>
+              <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">在分享選單中點選「儲存至檔案」，選擇一個容易找到的資料夾（如「下載項目」或「我的 iPhone」），然後點擊右上角的「儲存」。</p>
+            </div>
+          </div>
+          
+          <div class="guide-step" style="display: flex; gap: 12px; align-items: flex-start;">
+            <div class="step-num" style="background: var(--accent-blue); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">4</div>
+            <div>
+              <strong>回到本網頁，點擊「選擇檔案」</strong>
+              <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">點擊「選擇檔案」後，選擇「瀏覽」，就可以在「檔案」App 的該資料夾中找到並選取剛才儲存的音訊檔進行上傳轉譯！</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="closeIosVoiceMemoBtn">我瞭解了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- A4 一頁總覽列印專用容器 -->
+  <div id="a4PrintContainer" class="a4-print-container"></div>
 
   <!-- 自訂 Toast 提示 -->
   <div class="toast-container" id="toastContainer"></div>

@@ -121,7 +121,12 @@ const el = {
   nextSlideBtn: document.getElementById('nextSlideBtn'),
   slideIndicators: document.getElementById('slideIndicators'),
   regenerateSlidesBtn: document.getElementById('regenerateSlidesBtn'),
-  exportSlidesBtn: document.getElementById('exportSlidesBtn')
+  exportSlidesBtn: document.getElementById('exportSlidesBtn'),
+  exportOnepageBtn: document.getElementById('exportOnepageBtn'),
+  iosVoiceMemoModal: document.getElementById('iosVoiceMemoModal'),
+  iosVoiceMemoGuideBtn: document.getElementById('iosVoiceMemoGuideBtn'),
+  closeIosVoiceMemoModalBtn: document.getElementById('closeIosVoiceMemoModalBtn'),
+  closeIosVoiceMemoBtn: document.getElementById('closeIosVoiceMemoBtn')
 };
 
 // ==================== 頁面初始化 ====================
@@ -300,6 +305,33 @@ function setupEventListeners() {
   if (el.exportSlidesBtn) {
     el.exportSlidesBtn.addEventListener('click', exportSlidesToPdf);
   }
+  if (el.exportOnepageBtn) {
+    el.exportOnepageBtn.addEventListener('click', exportOnepageToPdf);
+  }
+
+  // iOS 語音備忘錄教學彈窗
+  if (el.iosVoiceMemoGuideBtn) {
+    el.iosVoiceMemoGuideBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      showIosVoiceMemoModal();
+    });
+  }
+  if (el.closeIosVoiceMemoModalBtn) {
+    el.closeIosVoiceMemoModalBtn.addEventListener('click', hideIosVoiceMemoModal);
+  }
+  if (el.closeIosVoiceMemoBtn) {
+    el.closeIosVoiceMemoBtn.addEventListener('click', hideIosVoiceMemoModal);
+  }
+  if (el.iosVoiceMemoModal) {
+    el.iosVoiceMemoModal.addEventListener('click', (e) => {
+      if (e.target === el.iosVoiceMemoModal) hideIosVoiceMemoModal();
+    });
+  }
+
+  // 監聽列印完成事件，自動還原樣式
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('print-mode-slides', 'print-mode-onepage');
+  });
 }
 
 // ==================== Modal 視窗控制 ====================
@@ -317,6 +349,18 @@ function showInstructionsModal() {
 
 function hideInstructionsModal() {
   el.instructionsModal.classList.remove('active');
+}
+
+function showIosVoiceMemoModal() {
+  if (el.iosVoiceMemoModal) {
+    el.iosVoiceMemoModal.classList.add('active');
+  }
+}
+
+function hideIosVoiceMemoModal() {
+  if (el.iosVoiceMemoModal) {
+    el.iosVoiceMemoModal.classList.remove('active');
+  }
 }
 
 function saveSettings() {
@@ -918,6 +962,7 @@ async function triggerTranscription() {
       3. 語意轉換或換人說話時必須分段。
       4. 逐字稿內容（text）請使用台灣的繁體中文習慣。若語音中出現英文、術語或多國語言，請精準保留，並確保拼音與用詞正確。
       5. 主要識別語言提示：${langHint}。
+      特別說明：如果選擇的語言提示為「混合多國語言模式 (中/英/台語等混合)」，代表本會議包含中/英/台語等多種發言，請務必原汁原味以各自說話者所使用的語系記錄，切勿強行翻譯轉換。
     `;
 
     // 結構化輸出 schema
@@ -1880,6 +1925,108 @@ function exportSlidesToPdf() {
     return;
   }
   
+  // 設定列印類別為投影片簡報
+  document.body.classList.remove('print-mode-onepage');
+  document.body.classList.add('print-mode-slides');
+  
   // 調用 window.print()，結合 CSS 中的 @media print 設定會只列印幻燈片且完美分頁
+  window.print();
+}
+
+// 匯出 A4 一頁總覽 PDF (動態填充列印專用容器並調用列印)
+function exportOnepageToPdf() {
+  if (!currentMeeting) {
+    showToast('沒有可列印的會議資料！', 'error');
+    return;
+  }
+
+  const printContainer = document.getElementById('a4PrintContainer');
+  if (!printContainer) return;
+
+  const title = el.meetingTitleInput ? el.meetingTitleInput.value.trim() : '未命名會議';
+  const date = el.meetingDateText ? el.meetingDateText.textContent : '';
+  
+  // 取得摘要與待辦 (去除 placeholder 樣式，只取實質內容)
+  let summaryHtml = '';
+  if (el.aiSummaryText) {
+    const isPlaceholder = el.aiSummaryText.querySelector('.placeholder-text') !== null;
+    summaryHtml = isPlaceholder ? '<p>尚無重點摘要</p>' : el.aiSummaryText.innerHTML;
+  } else {
+    summaryHtml = '<p>無會議摘要</p>';
+  }
+
+  let actionItemsHtml = '';
+  if (el.aiActionItemsText) {
+    const isPlaceholder = el.aiActionItemsText.querySelector('.placeholder-text') !== null;
+    actionItemsHtml = isPlaceholder ? '<p>尚無待辦事項</p>' : el.aiActionItemsText.innerHTML;
+  } else {
+    actionItemsHtml = '<p>無待辦事項</p>';
+  }
+
+  // 取得備註卡片清單
+  let notesHtml = '';
+  if (el.notesList) {
+    const noteCards = el.notesList.querySelectorAll('.note-card');
+    if (noteCards && noteCards.length > 0) {
+      notesHtml = '<div class="print-notes-grid">';
+      noteCards.forEach(card => {
+        const noteTextEl = card.querySelector('.note-text');
+        const noteTimeEl = card.querySelector('.note-time');
+        const content = noteTextEl ? noteTextEl.textContent : '';
+        const time = noteTimeEl ? noteTimeEl.textContent : '';
+        notesHtml += `
+          <div class="print-note-card">
+            <p class="print-note-text">${content}</p>
+            <span class="print-note-time">${time}</span>
+          </div>
+        `;
+      });
+      notesHtml += '</div>';
+    } else {
+      notesHtml = '<p class="no-notes">尚無備註卡片</p>';
+    }
+  } else {
+    notesHtml = '<p class="no-notes">尚無備註卡片</p>';
+  }
+
+  // 填寫列印專用 HTML
+  printContainer.innerHTML = `
+    <div class="print-onepage-layout">
+      <div class="print-header">
+        <div class="print-logo">
+          <i class="fa-solid fa-microphone-lines"></i> RECO AI 會議總覽報告
+        </div>
+        <h1>${title}</h1>
+        <div class="print-meta">
+          <span><i class="fa-solid fa-calendar-day"></i> 會議時間：${date}</span>
+        </div>
+      </div>
+      
+      <div class="print-section">
+        <h3><i class="fa-solid fa-list-check"></i> 會議重點摘要</h3>
+        <div class="print-content markdown-body">${summaryHtml}</div>
+      </div>
+
+      <div class="print-section">
+        <h3><i class="fa-solid fa-circle-exclamation"></i> 待辦清單 (Action Items)</h3>
+        <div class="print-content markdown-body">${actionItemsHtml}</div>
+      </div>
+
+      <div class="print-section">
+        <h3><i class="fa-solid fa-note-sticky"></i> 會議備註卡片</h3>
+        <div class="print-content">${notesHtml}</div>
+      </div>
+
+      <div class="print-footer">
+        <p>報告由 RECO AI 智慧助理生成 • 僅供內部參考</p>
+      </div>
+    </div>
+  `;
+
+  // 設定列印類別為一頁總覽
+  document.body.classList.remove('print-mode-slides');
+  document.body.classList.add('print-mode-onepage');
+
+  // 調用列印
   window.print();
 }
