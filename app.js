@@ -1721,7 +1721,7 @@ function setupLockScreenSwipeGesture() {
 
 
 // 匯出 A4 一頁總覽 PDF (動態填充列印專用容器並調用列印)
-function exportOnepageToPdf() {
+async function exportOnepageToPdf() {
   if (!currentMeeting) {
     showToast('沒有可列印的會議資料！', 'error');
     return;
@@ -1750,21 +1750,17 @@ function exportOnepageToPdf() {
     actionItemsHtml = '<p>無待辦事項</p>';
   }
 
-  // 取得備註卡片清單
+  // 取得備註卡片清單 (直接從 IndexedDB 資料庫讀取，比從 DOM 擷取更穩定)
   let notesHtml = '';
-  if (el.notesList) {
-    const noteCards = el.notesList.querySelectorAll('.note-card');
-    if (noteCards && noteCards.length > 0) {
+  try {
+    const notes = await getNotesByMeetingId(currentMeeting.id);
+    if (notes && notes.length > 0) {
       notesHtml = '<div class="print-notes-grid">';
-      noteCards.forEach(card => {
-        const noteTextEl = card.querySelector('.note-text');
-        const noteTimeEl = card.querySelector('.note-time');
-        const content = noteTextEl ? noteTextEl.textContent : '';
-        const time = noteTimeEl ? noteTimeEl.textContent : '';
+      notes.forEach(note => {
         notesHtml += `
           <div class="print-note-card">
-            <p class="print-note-text">${content}</p>
-            <span class="print-note-time">${time}</span>
+            <p class="print-note-text">${escapeHtml(note.content)}</p>
+            <span class="print-note-time">${note.created_at}</span>
           </div>
         `;
       });
@@ -1772,8 +1768,9 @@ function exportOnepageToPdf() {
     } else {
       notesHtml = '<p class="no-notes">尚無備註卡片</p>';
     }
-  } else {
-    notesHtml = '<p class="no-notes">尚無備註卡片</p>';
+  } catch (err) {
+    console.error('列印時取得備註卡片失敗:', err);
+    notesHtml = '<p class="no-notes">讀取備註卡片失敗</p>';
   }
 
   // 填寫列印專用 HTML
