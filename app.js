@@ -669,12 +669,28 @@ async function startRecordingWorkflow() {
       // 停止麥克風軌道，關閉錄音紅燈
       stream.getTracks().forEach(track => track.stop());
 
-      // 合併音軌
-      const audioBlob = new Blob(audioChunks, { type: options.mimeType || 'audio/webm' });
+      // 合併音軌并正確識別 MIME Type
+      let mimeType = options.mimeType;
+      if (!mimeType && mediaRecorder && mediaRecorder.mimeType) {
+        mimeType = mediaRecorder.mimeType;
+      }
+      if (!mimeType) {
+        mimeType = 'audio/webm';
+      }
+      const audioBlob = new Blob(audioChunks, { type: mimeType });
       
+      // 依據實際 MIME Type 決定檔案副檔名
+      let ext = 'webm';
+      if (mimeType.includes('mp4')) ext = 'mp4';
+      else if (mimeType.includes('mpeg')) ext = 'mp3';
+      else if (mimeType.includes('ogg')) ext = 'ogg';
+      else if (mimeType.includes('wav')) ext = 'wav';
+      else if (mimeType.includes('m4a')) ext = 'm4a';
+      else if (mimeType.includes('aac')) ext = 'aac';
+
       // 更新會議資訊並儲存
       currentMeeting.audioData = audioBlob;
-      currentMeeting.audioName = `reco_recording_${Date.now()}.webm`;
+      currentMeeting.audioName = `reco_recording_${Date.now()}.${ext}`;
       currentMeeting.audioMime = audioBlob.type;
 
       try {
@@ -943,6 +959,12 @@ async function triggerTranscription() {
   el.transcribeStatusText.textContent = 'AI 正在分析會議音訊...';
   el.transcribeProgressDetail.textContent = '語音檔案越大需要越久時間，請耐心等候（一般約需 30-90 秒）。';
 
+  // 自動切換至逐字稿分頁，確保使用者能看到轉譯進度
+  const transcriptTabBtn = document.querySelector('[data-tab="tabTranscript"]');
+  if (transcriptTabBtn) {
+    transcriptTabBtn.click();
+  }
+
   try {
     // 1. 將音訊轉換為 Base64
     const base64Audio = await blobToBase64(currentMeeting.audioData);
@@ -1041,6 +1063,24 @@ async function triggerTranscription() {
   } catch (err) {
     console.error('轉譯失敗:', err);
     showToast(`語音轉譯失敗：${err.message}`, 'error');
+
+    // 將詳細錯誤渲染到逐字稿容器中，方便使用者排查問題與重新執行
+    el.transcriptContainer.innerHTML = `
+      <div class="empty-transcript-message" style="padding: 30px 15px;">
+        <i class="fa-solid fa-circle-exclamation" style="color: #ef4444; font-size: 2.5rem; margin-bottom: 12px;"></i>
+        <p style="font-weight: 600; color: #ef4444; margin-bottom: 6px; font-size: 1.1rem;">語音轉譯失敗</p>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); max-width: 85%; text-align: center; line-height: 1.5; margin-bottom: 16px; word-break: break-all;">
+          錯誤詳情：${escapeHtml(err.message)}
+        </p>
+        <button class="btn-secondary" id="errorRetryBtn" style="padding: 8px 16px;">
+          <i class="fa-solid fa-rotate"></i> 重新嘗試轉譯
+        </button>
+      </div>
+    `;
+    const retryBtn = document.getElementById('errorRetryBtn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', triggerTranscription);
+    }
   } finally {
     el.transcribeStatusBanner.classList.add('hidden');
     el.transcriptControls.classList.remove('hidden');
