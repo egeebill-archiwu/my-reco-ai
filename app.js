@@ -21,8 +21,7 @@ let analyserNode = null;         // 音頻分析器
 let canvasContext = null;        // 音波畫布
 let visualizerAnimationId = null; // 音波動畫幀 ID
 let wakeLock = null;             // 螢幕 Wake Lock 鎖定器
-let currentSlideIndex = 0;       // 當前簡報幻燈片索引
-let slideCardsData = [];         // 簡報幻燈片資料集
+
 
 // ==================== DOM 元素 ====================
 const el = {
@@ -111,17 +110,6 @@ const el = {
   lockScreenTime: document.getElementById('lockScreenTime'),
   lockScreenDate: document.getElementById('lockScreenDate'),
 
-  // 簡報幻燈片
-  slidesSection: document.getElementById('slidesSection'),
-  slidesPlaceholder: document.getElementById('slidesPlaceholder'),
-  generateSlidesBtn: document.getElementById('generateSlidesBtn'),
-  slidesViewerWrapper: document.getElementById('slidesViewerWrapper'),
-  slidesContainer: document.getElementById('slidesContainer'),
-  prevSlideBtn: document.getElementById('prevSlideBtn'),
-  nextSlideBtn: document.getElementById('nextSlideBtn'),
-  slideIndicators: document.getElementById('slideIndicators'),
-  regenerateSlidesBtn: document.getElementById('regenerateSlidesBtn'),
-  exportSlidesBtn: document.getElementById('exportSlidesBtn'),
   exportOnepageBtn: document.getElementById('exportOnepageBtn'),
   iosVoiceMemoModal: document.getElementById('iosVoiceMemoModal'),
   iosVoiceMemoGuideBtn: document.getElementById('iosVoiceMemoGuideBtn'),
@@ -289,22 +277,7 @@ function setupEventListeners() {
   }
   setupLockScreenSwipeGesture();
 
-  // 簡報幻燈片
-  if (el.generateSlidesBtn) {
-    el.generateSlidesBtn.addEventListener('click', () => triggerSlidesGeneration(true));
-  }
-  if (el.regenerateSlidesBtn) {
-    el.regenerateSlidesBtn.addEventListener('click', () => triggerSlidesGeneration(true));
-  }
-  if (el.prevSlideBtn) {
-    el.prevSlideBtn.addEventListener('click', () => changeSlide(-1));
-  }
-  if (el.nextSlideBtn) {
-    el.nextSlideBtn.addEventListener('click', () => changeSlide(1));
-  }
-  if (el.exportSlidesBtn) {
-    el.exportSlidesBtn.addEventListener('click', exportSlidesToPdf);
-  }
+
   if (el.exportOnepageBtn) {
     el.exportOnepageBtn.addEventListener('click', exportOnepageToPdf);
   }
@@ -489,18 +462,7 @@ async function loadMeeting(id) {
     renderSummary(meeting.summary, meeting.action_items);
 
     // 載入簡報幻燈片
-    if (meeting.slides && meeting.slides.length > 0) {
-      slideCardsData = meeting.slides;
-      renderSlides(meeting.slides);
-      el.slidesPlaceholder.classList.add('hidden');
-      el.slidesViewerWrapper.classList.remove('hidden');
-    } else {
-      slideCardsData = [];
-      el.slidesPlaceholder.classList.remove('hidden');
-      el.slidesViewerWrapper.classList.add('hidden');
-      el.slidesContainer.innerHTML = '';
-      el.slideIndicators.innerHTML = '';
-    }
+
 
     // 載入筆記卡片
     await loadNoteCards(meeting.id);
@@ -1756,232 +1718,7 @@ function setupLockScreenSwipeGesture() {
 
 // ==================== 簡報幻燈片一鍵生成與渲染邏輯 ====================
 
-// 觸發 AI 簡報生成
-async function triggerSlidesGeneration(showAlert = true) {
-  if (!currentMeeting) return;
-  if (!currentMeeting.transcript || currentMeeting.transcript.length === 0) {
-    showToast('請先生成會議逐字稿，再進行簡報幻燈片生成！', 'error');
-    return;
-  }
 
-  const apiKey = localStorage.getItem('gemini_api_key');
-  if (!apiKey) {
-    showToast('請設定 Gemini API 金鑰後再生成簡報！', 'error');
-    showSettingsModal();
-    return;
-  }
-
-  if (showAlert) {
-    el.slidesPlaceholder.innerHTML = '<p class="placeholder-text"><i class="fa-solid fa-spinner fa-spin"></i> AI 正在分析逐字稿並製作 6 頁重點簡報幻燈片...</p>';
-    el.slidesViewerWrapper.classList.add('hidden');
-    el.slidesPlaceholder.classList.remove('hidden');
-  }
-
-  try {
-    const model = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-    const formattedTranscript = currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n');
-    const notes = await getNotesByMeetingId(currentMeeting.id);
-    const notesContent = (notes && notes.length > 0)
-      ? notes.map((n, idx) => `[備註卡片 ${idx + 1}] ${n.content}`).join('\n')
-      : '（無備註個人想法）';
-
-    const prompt = `
-      你是一位專精於簡報設計與重點提煉的 AI 簡報大師。請根據以下這份「會議逐字稿」與「個人備註卡片」，提煉並產出一份符合簡報幻燈片結構的簡報卡片（必須剛好 6 頁，不能多也不能少）。
-      
-      請依據下列 6 頁的主題，為每一頁生成標題、副標題與 3-4 個重點子項目清單：
-      - 頁面 1：會議封面（簡短有力的大標題、日期、出席人、核心議題）
-      - 頁面 2：會議主旨與背景（核心痛點、為什麼開這次會議）
-      - 頁面 3：關鍵議題討論（主要討論項目的發言重點或爭議交鋒）
-      - 頁面 4：會議關鍵決議（最終達成共識的重要決策）
-      - 頁面 5：待辦任務與分工（提及的具體任務、執行人、期限）
-      - 頁面 6：總結與後續展望（未來追蹤進度、預定追蹤事項）
-
-      一律使用台灣習慣的繁體中文回答。請確保回傳的物件是一個 JSON 陣列，陣列長度必須剛好是 6。
-      
-      【會議標題】：${currentMeeting.title}
-      【會議時間】：${currentMeeting.created_at}
-      【會議逐字稿】：
-      ${formattedTranscript}
-      【個人備註卡片】：
-      ${notesContent}
-    `;
-
-    const responseSchema = {
-      type: "ARRAY",
-      description: "剛好 6 頁簡報字卡的列表",
-      items: {
-        type: "OBJECT",
-        properties: {
-          pageNum: { type: "INTEGER", description: "頁碼 (1 到 6)" },
-          title: { type: "STRING", description: "該頁幻燈片的主標題" },
-          subtitle: { type: "STRING", description: "該頁幻燈片的副標題或一句話摘要" },
-          bulletPoints: { 
-            type: "ARRAY", 
-            description: "3 到 4 個核心要點清單",
-            items: { type: "STRING" }
-          }
-        },
-        required: ["pageNum", "title", "subtitle", "bulletPoints"]
-      }
-    };
-
-    const requestBody = {
-      contents: [
-        {
-          parts: [{ text: prompt }]
-        }
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0.3
-      }
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      let errDetail = '';
-      try {
-        const errJson = await response.json();
-        errDetail = errJson.error?.message || JSON.stringify(errJson);
-      } catch (e) {
-        try {
-          errDetail = await response.text();
-        } catch (e2) {
-          errDetail = response.statusText;
-        }
-      }
-      throw new Error(`生成簡報失敗 (${response.status}): ${errDetail}`);
-    }
-
-    const result = await response.json();
-    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    if (!responseText) {
-      throw new Error('未取得 AI 簡報回覆內容');
-    }
-
-    const slidesData = JSON.parse(responseText.trim());
-
-    // 儲存簡報至資料庫會議紀錄中
-    currentMeeting.slides = slidesData;
-    await saveMeeting(currentMeeting);
-
-    // 渲染簡報
-    slideCardsData = slidesData;
-    renderSlides(slidesData);
-
-    el.slidesPlaceholder.classList.add('hidden');
-    el.slidesViewerWrapper.classList.remove('hidden');
-    showToast('AI 重點簡報已成功生成！', 'success');
-
-  } catch (err) {
-    console.error('簡報生成錯誤:', err);
-    el.slidesPlaceholder.innerHTML = `
-      <p style="color:var(--status-danger)">簡報生成錯誤：${err.message}</p>
-      <button class="btn-secondary" id="generateSlidesBtn" style="margin-top: 10px; width: 100%;">
-        <i class="fa-solid fa-rotate"></i> 重新嘗試生成簡報
-      </button>
-    `;
-    // 重新綁定失敗時的按鈕
-    document.getElementById('generateSlidesBtn').addEventListener('click', () => triggerSlidesGeneration(true));
-  }
-}
-
-// 渲染簡報卡片 HTML
-function renderSlides(slides) {
-  el.slidesContainer.innerHTML = '';
-  el.slideIndicators.innerHTML = '';
-  currentSlideIndex = 0;
-
-  slides.forEach((slide, index) => {
-    // 建立卡片
-    const card = document.createElement('div');
-    card.className = `slide-card ${index === 0 ? 'active' : ''}`;
-    
-    const pointsList = slide.bulletPoints.map(p => `<li>${escapeHtml(p)}</li>`).join('');
-    
-    card.innerHTML = `
-      <div class="slide-card-header">
-        <span class="slide-number">PAGE ${slide.pageNum || (index + 1)} / 6</span>
-        <h3>${escapeHtml(slide.title)}</h3>
-        <p style="font-size:12px; color:var(--text-muted); font-style:italic; margin-top:2px;">${escapeHtml(slide.subtitle)}</p>
-      </div>
-      <div class="slide-card-body">
-        <ul>${pointsList}</ul>
-      </div>
-    `;
-    el.slidesContainer.appendChild(card);
-
-    // 建立圓點指示器
-    const dot = document.createElement('div');
-    dot.className = `slide-dot ${index === 0 ? 'active' : ''}`;
-    dot.addEventListener('click', () => jumpToSlide(index));
-    el.slideIndicators.appendChild(dot);
-  });
-}
-
-// 切換幻燈片 (左右按鈕)
-function changeSlide(direction) {
-  const cards = el.slidesContainer.querySelectorAll('.slide-card');
-  if (cards.length === 0) return;
-
-  let newIndex = currentSlideIndex + direction;
-  if (newIndex < 0) newIndex = cards.length - 1; // 循環首尾
-  if (newIndex >= cards.length) newIndex = 0;
-
-  jumpToSlide(newIndex);
-}
-
-// 跳轉到特定幻燈片
-function jumpToSlide(index) {
-  const cards = el.slidesContainer.querySelectorAll('.slide-card');
-  const dots = el.slideIndicators.querySelectorAll('.slide-dot');
-  if (cards.length === 0) return;
-
-  cards.forEach((card, idx) => {
-    card.classList.remove('active', 'prev-slide');
-    if (idx === index) {
-      card.classList.add('active');
-    } else if (idx < index) {
-      card.classList.add('prev-slide');
-    }
-  });
-
-  dots.forEach((dot, idx) => {
-    if (idx === index) {
-      dot.classList.add('active');
-    } else {
-      dot.classList.remove('active');
-    }
-  });
-
-  currentSlideIndex = index;
-}
-
-// 匯出簡報 PDF (調用系統列印)
-function exportSlidesToPdf() {
-  if (!slideCardsData || slideCardsData.length === 0) {
-    showToast('無簡報資料可進行匯出！', 'error');
-    return;
-  }
-  
-  // 設定列印類別為投影片簡報
-  document.body.classList.remove('print-mode-onepage');
-  document.body.classList.add('print-mode-slides');
-  
-  // 調用 window.print()，結合 CSS 中的 @media print 設定會只列印幻燈片且完美分頁
-  window.print();
-}
 
 // 匯出 A4 一頁總覽 PDF (動態填充列印專用容器並調用列印)
 function exportOnepageToPdf() {

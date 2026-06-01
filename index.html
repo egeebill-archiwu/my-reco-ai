@@ -241,47 +241,14 @@
                 </div>
               </div>
 
-              <!-- 會議簡報幻燈片區 -->
-              <div class="summary-section" id="slidesSection">
-                <h2><i class="fa-solid fa-chart-pie"></i> 會議簡報幻燈片</h2>
-                <div id="slidesPlaceholder">
-                  <p class="placeholder-text">您可以使用 AI 將本次會議彙整為 6 頁的重點簡報幻燈片。</p>
-                  <button class="btn-secondary" id="generateSlidesBtn" style="margin-top: 10px; width: 100%;">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> 一鍵生成簡報幻燈片
-                  </button>
-                </div>
-                <div class="slides-viewer-wrapper hidden" id="slidesViewerWrapper">
-                  <div class="slides-carousel">
-                    <button class="btn-carousel-ctrl" id="prevSlideBtn"><i class="fa-solid fa-chevron-left"></i></button>
-                    <div class="slides-container" id="slidesContainer">
-                      <!-- 簡報幻燈片卡片會動態生成 -->
-                    </div>
-                    <button class="btn-carousel-ctrl" id="nextSlideBtn"><i class="fa-solid fa-chevron-right"></i></button>
-                  </div>
-                  <div class="slide-indicators" id="slideIndicators">
-                    <!-- 指示點會動態生成 -->
-                  </div>
-                  <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px; width: 100%;">
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                      <button class="btn-secondary" id="regenerateSlidesBtn" style="flex: 1;">
-                        <i class="fa-solid fa-rotate"></i> 重新生成簡報
-                      </button>
-                    </div>
-                    <div style="display: flex; gap: 10px; width: 100%;">
-                      <button class="btn-primary" id="exportOnepageBtn" style="flex: 1;">
-                        <i class="fa-solid fa-file-invoice"></i> A4 一頁總覽 (PDF)
-                      </button>
-                      <button class="btn-primary" id="exportSlidesBtn" style="flex: 1; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); border: none;">
-                        <i class="fa-solid fa-file-powerpoint"></i> PPT 六頁簡報 (PDF)
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              <div style="display: flex; gap: 12px; margin-top: 24px; width: 100%;">
+                <button class="btn-secondary" id="regenerateSummaryBtn" style="flex: 1;">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> 重新生成 AI 摘要與待辦
+                </button>
+                <button class="btn-primary" id="exportOnepageBtn" style="flex: 1; background: var(--accent-gradient); border: none;">
+                  <i class="fa-solid fa-file-invoice"></i> A4 一頁總覽 (PDF)
+                </button>
               </div>
-
-              <button class="btn-primary" id="regenerateSummaryBtn">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> 重新生成 AI 摘要與待辦
-              </button>
             </div>
           </div>
         </div>
