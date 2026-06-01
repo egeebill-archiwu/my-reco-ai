@@ -811,7 +811,7 @@ function sanitizeAudioMimeType(file) {
   if (!mime || mime === '' || mime.includes('octet-stream')) {
     if (ext === 'mp3') return 'audio/mp3';
     if (ext === 'wav') return 'audio/wav';
-    if (ext === 'm4a') return 'audio/m4a';
+    if (ext === 'm4a') return 'audio/mp4';
     if (ext === 'mp4') return 'audio/mp4';
     if (ext === 'aac') return 'audio/aac';
     if (ext === 'webm') return 'audio/webm';
@@ -823,7 +823,7 @@ function sanitizeAudioMimeType(file) {
 
   // 標準化非標準 MIME 字串
   mime = mime.toLowerCase();
-  if (mime === 'audio/x-m4a' || mime === 'audio/m4a') return 'audio/m4a';
+  if (mime === 'audio/x-m4a' || mime === 'audio/m4a') return 'audio/mp4';
   if (mime === 'audio/x-aac' || mime === 'audio/aac') return 'audio/aac';
   if (mime === 'audio/x-wav' || mime === 'audio/wave' || mime === 'audio/wav') return 'audio/wav';
   if (mime === 'audio/mpeg' || mime === 'audio/mp3') return 'audio/mp3';
