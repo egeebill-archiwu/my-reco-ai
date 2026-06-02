@@ -13,6 +13,7 @@ let canvasContext = null;        // 音波畫布
 let visualizerAnimationId = null; // 音波動畫幀 ID
 let wakeLock = null;             // 螢幕 Wake Lock 鎖定器
 let pendingLargeFile = null;     // 待壓縮的大音訊檔案
+let compressionInterval = null;  // 壓縮秒數計時器
 
 
 // ==================== DOM 元素 ====================
@@ -427,31 +428,8 @@ async function showAudioLimitModal(sizeMb) {
     }
     const duration = await getAudioDuration(pendingLargeFile);
     if (duration > 0) {
-      let sampleRate = 16000;
-      let use8Bit = false;
-      
-      const size16k16b = duration * 16000 * 2;
-      const size8k16b = duration * 8000 * 2;
-      const size8k8b = duration * 8000 * 1;
-      const size6k8b = duration * 6000 * 1;
-      const size4k8b = duration * 4000 * 1;
-      
-      if (size16k16b <= 15000000) {
-        sampleRate = 16000;
-        use8Bit = false;
-      } else if (size8k16b <= 15000000) {
-        sampleRate = 8000;
-        use8Bit = false;
-      } else if (size8k8b <= 15000000) {
-        sampleRate = 8000;
-        use8Bit = true;
-      } else if (size6k8b <= 15000000) {
-        sampleRate = 6000;
-        use8Bit = true;
-      } else {
-        sampleRate = 4000;
-        use8Bit = true;
-      }
+      const sampleRate = 16000;
+      const use8Bit = false;
       
       const estSizeMb = (duration * sampleRate * (use8Bit ? 1 : 2)) / (1024 * 1024);
       if (el.compressedSizeEstText) {
@@ -606,6 +584,10 @@ function updateCompressProgress(text, percent) {
  * 重置壓縮按鈕與進度條 UI
  */
 function resetCompressButton() {
+  if (compressionInterval) {
+    clearInterval(compressionInterval);
+    compressionInterval = null;
+  }
   if (el.startAutoCompressBtn) {
     el.startAutoCompressBtn.disabled = false;
     el.startAutoCompressBtn.innerHTML = '<i class="fa-solid fa-compress"></i> 一鍵自動壓縮並轉譯';
@@ -622,8 +604,31 @@ function startAudioCompression() {
   
   if (el.startAutoCompressBtn) {
     el.startAutoCompressBtn.disabled = true;
-    el.startAutoCompressBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在解碼中...';
+    el.startAutoCompressBtn.innerHTML = '<i class="fa-solid fa-hourglass-half fa-spin"></i> 正在處理中...';
   }
+  
+  // 啟動進度秒數沙漏計時器
+  let secondsElapsed = 0;
+  if (compressionInterval) clearInterval(compressionInterval);
+  
+  updateCompressProgress('正在讀取音訊檔案 (請稍候)...', 5);
+  
+  compressionInterval = setInterval(() => {
+    secondsElapsed++;
+    let currentMsg = '正在處理音訊中';
+    if (el.compressProgressText) {
+      const fullText = el.compressProgressText.textContent || '';
+      const match = fullText.match(/(?:進行|正在|音訊)[^(]+/);
+      if (match) {
+        currentMsg = match[0].trim();
+      } else {
+        currentMsg = '正在處理音訊數據';
+      }
+    }
+    if (el.compressProgressText) {
+      el.compressProgressText.innerHTML = `<i class="fa-solid fa-hourglass-half fa-spin" style="color: var(--accent-blue);"></i> ${currentMsg} (已用時 ${secondsElapsed} 秒)`;
+    }
+  }, 1000);
   
   const fileReader = new FileReader();
   fileReader.onload = async function() {
@@ -637,32 +642,9 @@ function startAudioCompression() {
       updateCompressProgress('音訊解碼成功，正在配置重取樣參數...', 40);
       const duration = decodedBuffer.duration;
       
-      // 動態分析合適的壓縮規格
-      let sampleRate = 16000;
-      let use8Bit = false;
-      
-      const size16k16b = duration * 16000 * 2;
-      const size8k16b = duration * 8000 * 2;
-      const size8k8b = duration * 8000 * 1;
-      const size6k8b = duration * 6000 * 1;
-      const size4k8b = duration * 4000 * 1;
-      
-      if (size16k16b <= 15000000) {
-        sampleRate = 16000;
-        use8Bit = false;
-      } else if (size8k16b <= 15000000) {
-        sampleRate = 8000;
-        use8Bit = false;
-      } else if (size8k8b <= 15000000) {
-        sampleRate = 8000;
-        use8Bit = true;
-      } else if (size6k8b <= 15000000) {
-        sampleRate = 6000;
-        use8Bit = true;
-      } else {
-        sampleRate = 4000;
-        use8Bit = true;
-      }
+      // 統一採用 16kHz 16-bit 單聲道規格，確保語音識別的高清晰度品質
+      const sampleRate = 16000;
+      const use8Bit = false;
       
       updateCompressProgress(`正在進行重取樣與單聲道混合 (${sampleRate}Hz)...`, 60);
       const resampledBuffer = await resampleAudioBuffer(decodedBuffer, sampleRate);
@@ -671,6 +653,12 @@ function startAudioCompression() {
       const wavBlob = audioBufferToWav(resampledBuffer, use8Bit);
       
       updateCompressProgress('自動壓縮順利完成！正在套用...', 100);
+      
+      // 停止並清除計時器
+      if (compressionInterval) {
+        clearInterval(compressionInterval);
+        compressionInterval = null;
+      }
       
       setTimeout(() => {
         handleCompressedFile(wavBlob, pendingLargeFile.name);
@@ -691,6 +679,11 @@ function startAudioCompression() {
 async function handleCompressedFile(compressedBlob, originalName) {
   const baseName = originalName.replace(/\.[^/.]+$/, "");
   const compressedName = `${baseName}_compressed.wav`;
+  
+  if (compressionInterval) {
+    clearInterval(compressionInterval);
+    compressionInterval = null;
+  }
   
   // 隱藏 modal (內部會清空 pendingLargeFile，所以在這之前取得檔名)
   if (el.audioLimitModal) {
@@ -1260,6 +1253,7 @@ async function handleFileUpload(event) {
   // 大小限制提示（20MB）
   const sizeMb = file.size / (1024 * 1024);
   if (sizeMb > 20) {
+    pendingLargeFile = file;
     showAudioLimitModal(sizeMb);
     el.fileUploadInput.value = '';
     return;
@@ -1300,6 +1294,129 @@ async function handleFileUpload(event) {
 // ==================== Gemini API 連線與核心邏輯 ====================
 
 /**
+ * 容錯部分 JSON 解析器：從可能截斷的 JSON 字串中復原所有完整的大括號物件
+ */
+function parsePartialJson(jsonStr) {
+  let cleaned = jsonStr.trim();
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.substring(7);
+  }
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.substring(0, cleaned.length - 3);
+  }
+  cleaned = cleaned.trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.warn("標準 JSON 解析失敗，嘗試局部復原...", e);
+  }
+
+  const list = [];
+  let braceLevel = 0;
+  let inString = false;
+  let isEscaped = false;
+  let startIdx = -1;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false;
+      } else if (char === '\\') {
+        isEscaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+    } else {
+      if (char === '"') {
+        inString = true;
+      } else if (char === '{') {
+        if (braceLevel === 0) {
+          startIdx = i;
+        }
+        braceLevel++;
+      } else if (char === '}') {
+        braceLevel--;
+        if (braceLevel < 0) {
+          braceLevel = 0;
+        }
+        if (braceLevel === 0 && startIdx !== -1) {
+          const objStr = cleaned.substring(startIdx, i + 1);
+          try {
+            const obj = JSON.parse(objStr);
+            list.push(obj);
+          } catch (e) {
+            console.error("解析部分物件失敗:", objStr, e);
+          }
+          startIdx = -1;
+        }
+      }
+    }
+  }
+
+  return list;
+}
+
+/**
+ * 輔助方法：切片 AudioBuffer 獲取特定時間段落的子 AudioBuffer
+ */
+function sliceAudioBuffer(audioCtx, buffer, startSeconds, endSeconds) {
+  const sampleRate = buffer.sampleRate;
+  const startSample = Math.floor(startSeconds * sampleRate);
+  const endSample = Math.floor(endSeconds * sampleRate);
+  const frameCount = Math.max(0, endSample - startSample);
+  
+  const newBuffer = audioCtx.createBuffer(
+    1, // 單聲道
+    frameCount,
+    sampleRate
+  );
+  
+  if (frameCount > 0) {
+    const channelData = buffer.getChannelData(0);
+    const newChannelData = newBuffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      newChannelData[i] = channelData[startSample + i] || 0;
+    }
+  }
+  
+  return newBuffer;
+}
+
+/**
+ * 輔助方法：將時間戳字串 (如 02:45 或 01:12:05) 轉換為秒數
+ */
+function timestampToSeconds(timeStr) {
+  if (!timeStr) return 0;
+  const parts = timeStr.trim().split(':');
+  if (parts.length === 2) {
+    // MM:SS
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  } else if (parts.length === 3) {
+    // HH:MM:SS
+    return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+  }
+  return parseFloat(timeStr) || 0;
+}
+
+/**
+ * 輔助方法：將秒數轉換為時間戳字串 (MM:SS 或 HH:MM:SS)
+ */
+function secondsToTimestamp(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  
+  if (h > 0) {
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  } else {
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+}
+
+/**
  * 輔助方法：將 Blob 轉為 Base64 字串
  */
 function blobToBase64(blob) {
@@ -1323,10 +1440,10 @@ async function triggerTranscription() {
     return;
   }
 
-  // 檢查檔案大小限制 (20MB)
+  // 檢查檔案大小限制 (150MB)
   const sizeMb = currentMeeting.audioData.size / (1024 * 1024);
-  if (sizeMb > 20) {
-    showAudioLimitModal(sizeMb);
+  if (sizeMb > 150) {
+    showToast('音訊檔案太大 (超過 150MB)，請先進行壓縮或分割！', 'error');
     return;
   }
 
@@ -1350,26 +1467,21 @@ async function triggerTranscription() {
   }
 
   try {
-    // 1. 將音訊轉換為 Base64
-    const base64Audio = await blobToBase64(currentMeeting.audioData);
+    // 1. 解碼音訊數據以獲取播放長度與取樣率
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // 2. 確定語系提示
+    el.transcribeStatusText.textContent = '正在讀取並解碼會議音訊數據...';
+    el.transcribeProgressDetail.textContent = '長會議音訊解碼需要 5-15 秒，請稍候。';
+    
+    const arrayBuffer = await currentMeeting.audioData.arrayBuffer();
+    const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const duration = decodedBuffer.duration;
+    
+    // 2. 確定語系與參數設定
     const langHint = el.languageHintSelect.value;
-    
-    // 3. 調用 API
     const model = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-    const prompt = `
-      你是一個專業的會議逐字稿生成助理。請仔細聆聽這段音訊，並完成以下任務：
-      
-      1. 細緻識別出不同的說話者（依據音色、語氣、上下文邏輯進行區分），並用 "說話者 A", "說話者 B", "說話者 C" 這樣統一的代號標註。如果知道是特定人名，可以寫人名，但必須前後一致。
-      2. 每段對話必須包含精確的開始時間（start）與結束時間（end），時間戳格式為 MM:SS 或 HH:MM:SS（如 00:03, 02:45, 01:12:05）。
-      3. 語意轉換或換人說話時必須分段。
-      4. 逐字稿內容（text）請使用台灣的繁體中文習慣。若語音中出現英文、術語或多國語言，請精準保留，並確保拼音與用詞正確。
-      5. 主要識別語言提示：${langHint}。
-    `;
-
+    
     // 結構化輸出 schema
     const responseSchema = {
       type: "ARRAY",
@@ -1385,65 +1497,199 @@ async function triggerTranscription() {
         required: ["speaker", "start", "end", "text"]
       }
     };
-
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              inlineData: {
-                mimeType: currentMeeting.audioMime || 'audio/webm',
-                data: base64Audio
-              }
-            },
-            {
-              text: prompt
-            }
-          ]
-        }
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0.1
-      }
-    };
-
-    el.transcribeStatusText.textContent = 'API 已受理，正在產生結構化逐字稿...';
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`API 請求錯誤: ${response.statusText}. 詳情: ${errText}`);
-    }
-
-    const result = await response.json();
-    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
     
-    if (!responseText) {
-      throw new Error('Gemini API 未回傳逐字稿內容，請檢查金鑰或音軌格式是否正確。');
+    let transcriptJson = [];
+    let isTruncatedAny = false;
+    
+    const chunkSize = 300; // 5分鐘分片
+    
+    if (duration > chunkSize) {
+      // === 分段轉譯工作流 (長音訊，避免 Token 超限，維持高清晰度 16kHz) ===
+      const chunksCount = Math.ceil(duration / chunkSize);
+      
+      el.transcribeStatusText.textContent = `音訊長度約 ${Math.round(duration/60)} 分鐘，正在重取樣音軌...`;
+      el.transcribeProgressDetail.textContent = '正在進行單聲道重取樣 (16kHz 16-bit) 以確保高精準辨識度...';
+      
+      const resampledBuffer = await resampleAudioBuffer(decodedBuffer, 16000);
+      
+      for (let i = 0; i < chunksCount; i++) {
+        const startSec = i * chunkSize;
+        const endSec = Math.min(startSec + chunkSize, duration);
+        
+        el.transcribeStatusText.textContent = `正在轉譯第 ${i+1}/${chunksCount} 段音訊...`;
+        el.transcribeProgressDetail.textContent = `處理時間區段：${secondsToTimestamp(startSec)} 至 ${secondsToTimestamp(endSec)}`;
+        
+        const chunkBuffer = sliceAudioBuffer(audioCtx, resampledBuffer, startSec, endSec);
+        const wavBlob = audioBufferToWav(chunkBuffer, false); // 16-bit
+        const base64Audio = await blobToBase64(wavBlob);
+        
+        const prompt = `
+          你是一個專業的會議逐字稿生成助理。請仔細聆聽這段音訊（這是整場會議的其中一段分片），並完成以下任務：
+          
+          1. 細緻識別出不同的說話者（依據音色、語氣、上下文邏輯進行區分），並用 "說話者 A", "說話者 B", "說話者 C" 這樣統一的代號標註。如果知道是特定人名，可以寫人名，但必須前後一致。
+          2. 每段對話必須包含精確的開始時間（start）與結束時間（end），時間戳格式為 MM:SS 或 HH:MM:SS（如 00:03, 02:45, 01:12:05）。特別注意：時間戳請從 00:00 開始起算，這是該片段的相對時間。
+          3. 【重要】為了優化資料傳輸並防止轉譯內容超出 Token 限制被截斷，請「合併同一個說話者連續發言的句子」。除非說話者改變或有超過 10 秒的明顯停頓，否則請將該說話者的多句話整合成一個較長段落（如 20 至 40 秒的發言，約 3 至 5 句話），不要每句話都單獨分段。
+          4. 逐字稿內容（text）請使用台灣的繁體中文習慣。若語音中出現英文、術語或多國語言，請精準保留，並確保拼音與用詞正確。
+          5. 主要識別語言提示：${langHint}。
+        `;
+        
+        const requestBody = {
+          contents: [
+            {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: 'audio/wav',
+                    data: base64Audio
+                  }
+                },
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: responseSchema,
+            temperature: 0.1,
+            maxOutputTokens: 8192
+          }
+        };
+        
+        let chunkResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (!chunkResponse.ok) {
+          const errText = await chunkResponse.text();
+          throw new Error(`第 ${i+1} 段轉譯失敗 (HTTP ${chunkResponse.status})：${errText}`);
+        }
+        
+        const result = await chunkResponse.json();
+        const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!responseText) {
+          console.warn(`第 ${i+1} 段 API 未回傳逐字稿，跳過此分段`);
+          continue;
+        }
+        
+        let chunkJson;
+        try {
+          chunkJson = JSON.parse(responseText.trim());
+        } catch (parseErr) {
+          console.warn(`第 ${i+1} 段標準 JSON 解析失敗，嘗試局部復原...`, parseErr);
+          chunkJson = parsePartialJson(responseText);
+          if (chunkJson && chunkJson.length > 0) {
+            isTruncatedAny = true;
+          } else {
+            console.error(`第 ${i+1} 段解析完全失敗，跳過本分段`);
+            continue;
+          }
+        }
+        
+        // 校正時間戳偏移量
+        chunkJson.forEach(segment => {
+          const startSecAdjusted = timestampToSeconds(segment.start) + startSec;
+          const endSecAdjusted = timestampToSeconds(segment.end) + startSec;
+          segment.start = secondsToTimestamp(startSecAdjusted);
+          segment.end = secondsToTimestamp(endSecAdjusted);
+          transcriptJson.push(segment);
+        });
+      }
+    } else {
+      // === 單段轉譯工作流 (短音訊，直接全檔發送) ===
+      const base64Audio = await blobToBase64(currentMeeting.audioData);
+      
+      const prompt = `
+        你是一個專業的會議逐字稿生成助理。請仔細聆聽這段音訊，並完成以下任務：
+        
+        1. 細緻識別出不同的說話者（依據音色、語氣、上下文邏輯進行區分），並用 "說話者 A", "說話者 B", "說話者 C" 這樣統一的代號標註。如果知道是特定人名，可以寫人名，但必須前後一致。
+        2. 每段對話必須包含精確的開始時間（start）與結束時間（end），時間戳格式為 MM:SS 或 HH:MM:SS（如 00:03, 02:45, 01:12:05）。
+        3. 【重要】為了優化資料傳輸並防止長會議轉譯內容超出 Token 限制被截斷，請「合併同一個說話者連續發言的句子」。除非說話者改變或有超過 10 秒的明顯停頓，否則請將該說話者的多句話整合成一個較長段落（如 20 至 40 秒的發言，約 3 至 5 句話），不要每句話都單獨分段。
+        4. 逐字稿內容（text）請使用台灣的繁體中文習慣。若語音中出現英文、術語或多國語言，請精準保留，並確保拼音與用詞正確。
+        5. 主要識別語言提示：${langHint}。
+      `;
+      
+      const requestBody = {
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: currentMeeting.audioMime || 'audio/webm',
+                  data: base64Audio
+                }
+              },
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: responseSchema,
+          temperature: 0.1,
+          maxOutputTokens: 8192
+        }
+      };
+      
+      el.transcribeStatusText.textContent = 'API 已受理，正在產生結構化逐字稿...';
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`API 請求錯誤: ${response.statusText}. 詳情: ${errText}`);
+      }
+      
+      const result = await response.json();
+      const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (!responseText) {
+        throw new Error('Gemini API 未回傳逐字稿內容，請檢查金鑰或音軌格式是否正確。');
+      }
+      
+      try {
+        transcriptJson = JSON.parse(responseText.trim());
+      } catch (parseErr) {
+        console.warn("標準 JSON 解析失敗，嘗試局部復原...", parseErr);
+        transcriptJson = parsePartialJson(responseText);
+        if (transcriptJson && transcriptJson.length > 0) {
+          isTruncatedAny = true;
+        } else {
+          throw new Error('無法解析語音轉譯內容：' + parseErr.message);
+        }
+      }
     }
-
-    const transcriptJson = JSON.parse(responseText.trim());
-
-    // 儲存至資料庫
+    
+    // 3. 儲存至資料庫與渲染
     currentMeeting.transcript = transcriptJson;
     await saveMeeting(currentMeeting);
-
-    // 渲染逐字稿
+    
     renderTranscript(transcriptJson);
-
+    
+    if (isTruncatedAny) {
+      showToast('由於會議時間較長，部分逐字稿可能被截斷，已為您復原前段已完成的逐字稿。', 'warning');
+    } else {
+      showToast('會議語音轉譯完成！', 'success');
+    }
+    
     // 自動接著生成 AI 摘要與待辦
     el.transcribeStatusText.textContent = '轉寫完成！正在自動生成 AI 摘要...';
-    await triggerSummaryGeneration(false); // 傳入 false 表示不要彈出 alert
-
+    await triggerSummaryGeneration(false);
+    
   } catch (err) {
     console.error('轉譯失敗:', err);
     showToast(`語音轉譯失敗：${err.message}`, 'error');
@@ -1479,7 +1725,6 @@ async function triggerTranscription() {
   } finally {
     el.transcribeStatusBanner.classList.add('hidden');
     el.transcriptControls.classList.remove('hidden');
-  }
 }
 
 /**
@@ -2015,8 +2260,14 @@ function showToast(message, type = 'success') {
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
+  
+  let iconClass = 'fa-circle-check';
+  if (type === 'error' || type === 'warning') {
+    iconClass = 'fa-circle-exclamation';
+  }
+
   toast.innerHTML = `
-    <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i>
+    <i class="fa-solid ${iconClass}"></i>
     <span>${message}</span>
   `;
 

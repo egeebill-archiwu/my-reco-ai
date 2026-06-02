@@ -1649,8 +1649,17 @@ audio {
   color: var(--status-success);
 }
 
+.toast.warning i {
+  color: var(--status-warning);
+}
+
 .toast.error i {
   color: var(--status-danger);
+}
+
+.toast.warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.15);
 }
 
 .toast.error {
