@@ -8,7 +8,7 @@ let dbPromise = null;
 /**
  * 初始化並取得 IndexedDB 連線
  */
-export function getDb() {
+function getDb() {
   if (dbPromise) return dbPromise;
 
   dbPromise = new Promise((resolve, reject) => {
@@ -49,7 +49,7 @@ export function getDb() {
  * 儲存或更新會議
  * @param {Object} meeting - 會議資料，如 { id, title, created_at, audioData, audioName, audioMime, transcript, summary, action_items }
  */
-export async function saveMeeting(meeting) {
+async function saveMeeting(meeting) {
   const db = await getDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['meetings'], 'readwrite');
@@ -69,7 +69,7 @@ export async function saveMeeting(meeting) {
 /**
  * 取得所有會議清單 (排除音訊 Blob 與大體積逐字稿以節省記憶體)
  */
-export async function getAllMeetings() {
+async function getAllMeetings() {
   const db = await getDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['meetings'], 'readonly');
@@ -105,7 +105,7 @@ export async function getAllMeetings() {
 /**
  * 取得單一會議詳情
  */
-export async function getMeetingById(id) {
+async function getMeetingById(id) {
   const db = await getDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['meetings'], 'readonly');
@@ -125,7 +125,7 @@ export async function getMeetingById(id) {
 /**
  * 刪除會議紀錄及關聯的筆記卡片
  */
-export async function deleteMeeting(id) {
+async function deleteMeeting(id) {
   const db = await getDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['meetings', 'notes'], 'readwrite');
@@ -162,7 +162,7 @@ export async function deleteMeeting(id) {
 /**
  * 新增或更新筆記卡片
  */
-export async function saveNote(note) {
+async function saveNote(note) {
   const db = await getDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['notes'], 'readwrite');
@@ -182,7 +182,7 @@ export async function saveNote(note) {
 /**
  * 取得特定會議的所有筆記卡片
  */
-export async function getNotesByMeetingId(meetingId) {
+async function getNotesByMeetingId(meetingId) {
   const db = await getDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['notes'], 'readonly');
@@ -212,7 +212,7 @@ export async function getNotesByMeetingId(meetingId) {
 /**
  * 刪除特定筆記卡片
  */
-export async function deleteNote(id) {
+async function deleteNote(id) {
   const db = await getDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(['notes'], 'readwrite');

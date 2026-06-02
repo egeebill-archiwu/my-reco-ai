@@ -1,13 +1,4 @@
 // RECO AI - 智慧會議紀錄與筆記助理前端核心
-import {
-  saveMeeting,
-  getAllMeetings,
-  getMeetingById,
-  deleteMeeting,
-  saveNote,
-  getNotesByMeetingId,
-  deleteNote
-} from './db.js';
 
 // ==================== 全域變數 ====================
 let currentMeeting = null;       // 當前選中的會議紀錄對象
@@ -21,6 +12,7 @@ let analyserNode = null;         // 音頻分析器
 let canvasContext = null;        // 音波畫布
 let visualizerAnimationId = null; // 音波動畫幀 ID
 let wakeLock = null;             // 螢幕 Wake Lock 鎖定器
+let pendingLargeFile = null;     // 待壓縮的大音訊檔案
 
 
 // ==================== DOM 元素 ====================
@@ -114,7 +106,17 @@ const el = {
   iosVoiceMemoModal: document.getElementById('iosVoiceMemoModal'),
   iosVoiceMemoGuideBtn: document.getElementById('iosVoiceMemoGuideBtn'),
   closeIosVoiceMemoModalBtn: document.getElementById('closeIosVoiceMemoModalBtn'),
-  closeIosVoiceMemoBtn: document.getElementById('closeIosVoiceMemoBtn')
+  closeIosVoiceMemoBtn: document.getElementById('closeIosVoiceMemoBtn'),
+  audioLimitModal: document.getElementById('audioLimitModal'),
+  uploadFileSizeText: document.getElementById('uploadFileSizeText'),
+  closeAudioLimitModalBtn: document.getElementById('closeAudioLimitModalBtn'),
+  closeAudioLimitBtn: document.getElementById('closeAudioLimitBtn'),
+  compressedSizeEstText: document.getElementById('compressedSizeEstText'),
+  compressProgressWrapper: document.getElementById('compressProgressWrapper'),
+  compressProgressText: document.getElementById('compressProgressText'),
+  compressPercentText: document.getElementById('compressPercentText'),
+  compressProgressBar: document.getElementById('compressProgressBar'),
+  startAutoCompressBtn: document.getElementById('startAutoCompressBtn')
 };
 
 // ==================== 頁面初始化 ====================
@@ -133,37 +135,77 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('resize', resizeCanvas);
 
   // 載入 API Key 與模型設定
-  const savedKey = localStorage.getItem('gemini_api_key');
-  if (savedKey) {
-    el.apiKeyInput.value = savedKey;
-  } else {
-    // 第一次使用，主動彈出設定框
-    showSettingsModal();
-  }
-  const savedModel = localStorage.getItem('gemini_model');
-  if (savedModel && el.modelSelect) {
-    el.modelSelect.value = savedModel;
+  try {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) {
+      if (el.apiKeyInput) el.apiKeyInput.value = savedKey;
+    } else {
+      // 第一次使用，主動彈出設定框
+      showSettingsModal();
+    }
+    const savedModel = localStorage.getItem('gemini_model');
+    if (savedModel && el.modelSelect) {
+      el.modelSelect.value = savedModel;
+    }
+  } catch (e) {
+    console.warn('無法讀取 localStorage 設定 (可能受瀏覽器安全限制):', e);
   }
 
-  // 載入會議清單
-  await refreshMeetingList();
+  // 載入會議清單 (非同步執行，避免 IndexedDB 讀取阻塞事件監聽器註冊)
+  refreshMeetingList().catch(err => console.error('載入會議清單失敗:', err));
+  
+  // 立即註冊所有事件監聽器以確保介面功能正常
   setupEventListeners();
 
   // 註冊 PWA Service Worker (支援手機端「加入主畫面」離線使用與 App 體驗)
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(reg => console.log('PWA Service Worker 註冊成功:', reg.scope))
-        .catch(err => console.error('PWA Service Worker 註冊失敗:', err));
-    });
+  try {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => {
+            console.log('PWA Service Worker 註冊成功:', reg.scope);
+            
+            // 監聽是否有新的 Service Worker 正在安裝中
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      // 新的 Service Worker 已經下載並安裝完畢，提示使用者重新載入
+                      console.log('新版本已就緒，提示更新...');
+                      showToast('偵測到系統新版本！正在自動更新...', 'success');
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 1500);
+                    }
+                  }
+                });
+              }
+            });
+          })
+          .catch(err => console.error('PWA Service Worker 註冊失敗:', err));
+      });
+      
+      // 監聽 Controller 變化，確保新 Service Worker 啟用後自動重新載入頁面
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+    }
+  } catch (swErr) {
+    console.warn('無法註冊 Service Worker:', swErr);
   }
 });
 
 // ==================== 事件綁定 ====================
 function setupEventListeners() {
   // 側邊欄控制
-  el.menuToggleBtn.addEventListener('click', () => el.sidebar.classList.add('active'));
-  el.closeSidebarBtn.addEventListener('click', () => el.sidebar.classList.remove('active'));
+  if (el.menuToggleBtn) el.menuToggleBtn.addEventListener('click', () => el.sidebar && el.sidebar.classList.add('active'));
+  if (el.closeSidebarBtn) el.closeSidebarBtn.addEventListener('click', () => el.sidebar && el.sidebar.classList.remove('active'));
   
   // 返回首頁
   if (el.goHomeBtn) el.goHomeBtn.addEventListener('click', showWelcomeView);
@@ -172,19 +214,19 @@ function setupEventListeners() {
 
   // 新增會議
   if (el.newMeetingBtn) el.newMeetingBtn.addEventListener('click', createNewMeetingOffline);
-  el.actionRecord.addEventListener('click', startRecordingWorkflow);
-  el.actionUpload.addEventListener('click', () => el.fileUploadInput.click());
-  el.fileUploadInput.addEventListener('change', handleFileUpload);
+  if (el.actionRecord) el.actionRecord.addEventListener('click', startRecordingWorkflow);
+  if (el.actionUpload) el.actionUpload.addEventListener('click', () => el.fileUploadInput && el.fileUploadInput.click());
+  if (el.fileUploadInput) el.fileUploadInput.addEventListener('change', handleFileUpload);
 
   // 手機版 AI 助理側邊欄控制
   if (el.mobileAssistantBtn) {
     el.mobileAssistantBtn.addEventListener('click', () => {
-      el.assistantPanel.classList.toggle('active');
+      if (el.assistantPanel) el.assistantPanel.classList.toggle('active');
     });
   }
   if (el.closeAssistantBtn) {
     el.closeAssistantBtn.addEventListener('click', () => {
-      el.assistantPanel.classList.remove('active');
+      if (el.assistantPanel) el.assistantPanel.classList.remove('active');
     });
   }
 
@@ -201,75 +243,89 @@ function setupEventListeners() {
   }
 
   // 搜尋會議
-  el.searchMeetingsInput.addEventListener('input', filterMeetings);
+  if (el.searchMeetingsInput) el.searchMeetingsInput.addEventListener('input', filterMeetings);
 
   // 設定 Modal
-  el.settingsBtn.addEventListener('click', showSettingsModal);
-  el.mobileSettingsBtn.addEventListener('click', showSettingsModal);
-  el.closeModalBtn.addEventListener('click', hideSettingsModal);
-  el.cancelSettingsBtn.addEventListener('click', hideSettingsModal);
-  el.saveSettingsBtn.addEventListener('click', saveSettings);
+  if (el.settingsBtn) el.settingsBtn.addEventListener('click', showSettingsModal);
+  if (el.mobileSettingsBtn) el.mobileSettingsBtn.addEventListener('click', showSettingsModal);
+  if (el.closeModalBtn) el.closeModalBtn.addEventListener('click', hideSettingsModal);
+  if (el.cancelSettingsBtn) el.cancelSettingsBtn.addEventListener('click', hideSettingsModal);
+  if (el.saveSettingsBtn) el.saveSettingsBtn.addEventListener('click', saveSettings);
 
   // 點擊 Modal 外側關閉
-  el.settingsModal.addEventListener('click', (e) => {
-    if (e.target === el.settingsModal) hideSettingsModal();
-  });
+  if (el.settingsModal) {
+    el.settingsModal.addEventListener('click', (e) => {
+      if (e.target === el.settingsModal) hideSettingsModal();
+    });
+  }
 
   // 會議詳情互動
-  el.meetingTitleInput.addEventListener('blur', saveCurrentMeetingTitle);
-  el.meetingTitleInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') el.meetingTitleInput.blur();
-  });
-  el.deleteMeetingBtn.addEventListener('click', deleteCurrentMeeting);
-  el.exportBtn.addEventListener('click', exportMeetingData);
+  if (el.meetingTitleInput) {
+    el.meetingTitleInput.addEventListener('blur', saveCurrentMeetingTitle);
+    el.meetingTitleInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') el.meetingTitleInput.blur();
+    });
+  }
+  if (el.deleteMeetingBtn) el.deleteMeetingBtn.addEventListener('click', deleteCurrentMeeting);
+  if (el.exportBtn) el.exportBtn.addEventListener('click', exportMeetingData);
 
   // 分頁切換 (逐字稿 / AI 摘要)
-  el.tabButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      el.tabButtons.forEach(b => b.classList.remove('active'));
-      el.tabPanes.forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const paneId = btn.getAttribute('data-tab');
-      document.getElementById(paneId).classList.add('active');
+  if (el.tabButtons) {
+    el.tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (el.tabButtons) el.tabButtons.forEach(b => b.classList.remove('active'));
+        if (el.tabPanes) el.tabPanes.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const paneId = btn.getAttribute('data-tab');
+        const pane = document.getElementById(paneId);
+        if (pane) pane.classList.add('active');
+      });
     });
-  });
+  }
 
   // 助理面板分頁切換
-  el.assistantTabButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      el.assistantTabButtons.forEach(b => b.classList.remove('active'));
-      el.assistantPanes.forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const paneId = btn.getAttribute('data-assistant-tab');
-      document.getElementById(paneId === 'tabChat' ? 'assistantTabChat' : 'assistantTabNotes').classList.add('active');
+  if (el.assistantTabButtons) {
+    el.assistantTabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (el.assistantTabButtons) el.assistantTabButtons.forEach(b => b.classList.remove('active'));
+        if (el.assistantPanes) el.assistantPanes.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const paneId = btn.getAttribute('data-assistant-tab');
+        const targetPane = document.getElementById(paneId === 'tabChat' ? 'assistantTabChat' : 'assistantTabNotes');
+        if (targetPane) targetPane.classList.add('active');
+      });
     });
-  });
+  }
 
   // AI 轉譯 / 重新生成
-  el.reTranscribeBtn.addEventListener('click', triggerTranscription);
-  el.regenerateSummaryBtn.addEventListener('click', triggerSummaryGeneration);
+  if (el.reTranscribeBtn) el.reTranscribeBtn.addEventListener('click', triggerTranscription);
+  if (el.regenerateSummaryBtn) el.regenerateSummaryBtn.addEventListener('click', triggerSummaryGeneration);
 
   // AI Chat 對話
-  el.sendChatBtn.addEventListener('click', sendChatMessage);
-  el.chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendChatMessage();
-    }
-  });
+  if (el.sendChatBtn) el.sendChatBtn.addEventListener('click', sendChatMessage);
+  if (el.chatInput) {
+    el.chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+  }
 
   // 筆記卡片
-  el.addNoteBtn.addEventListener('click', addNewNoteCard);
-  el.noteInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      addNewNoteCard();
-    }
-  });
+  if (el.addNoteBtn) el.addNoteBtn.addEventListener('click', addNewNoteCard);
+  if (el.noteInput) {
+    el.noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        addNewNoteCard();
+      }
+    });
+  }
 
   // 錄音控制
-  el.pauseRecordBtn.addEventListener('click', togglePauseRecording);
-  el.stopRecordBtn.addEventListener('click', stopRecording);
+  if (el.pauseRecordBtn) el.pauseRecordBtn.addEventListener('click', togglePauseRecording);
+  if (el.stopRecordBtn) el.stopRecordBtn.addEventListener('click', stopRecording);
 
   // 鎖屏偽裝
   if (el.lockRecordBtn) {
@@ -299,6 +355,22 @@ function setupEventListeners() {
     el.iosVoiceMemoModal.addEventListener('click', (e) => {
       if (e.target === el.iosVoiceMemoModal) hideIosVoiceMemoModal();
     });
+  }
+
+  // 檔案大小超限提示彈窗事件
+  if (el.closeAudioLimitModalBtn) {
+    el.closeAudioLimitModalBtn.addEventListener('click', hideAudioLimitModal);
+  }
+  if (el.closeAudioLimitBtn) {
+    el.closeAudioLimitBtn.addEventListener('click', hideAudioLimitModal);
+  }
+  if (el.audioLimitModal) {
+    el.audioLimitModal.addEventListener('click', (e) => {
+      if (e.target === el.audioLimitModal) hideAudioLimitModal();
+    });
+  }
+  if (el.startAutoCompressBtn) {
+    el.startAutoCompressBtn.addEventListener('click', startAudioCompression);
   }
 
   // 監聽列印完成事件，自動還原樣式
@@ -334,6 +406,347 @@ function hideIosVoiceMemoModal() {
   if (el.iosVoiceMemoModal) {
     el.iosVoiceMemoModal.classList.remove('active');
   }
+}
+
+async function showAudioLimitModal(sizeMb) {
+  if (el.uploadFileSizeText) {
+    el.uploadFileSizeText.textContent = sizeMb.toFixed(1);
+  }
+  
+  // 重置壓縮按鈕與狀態
+  resetCompressButton();
+  
+  if (el.audioLimitModal) {
+    el.audioLimitModal.classList.add('active');
+  }
+  
+  // 計算長度並估算壓縮後大小
+  if (pendingLargeFile) {
+    if (el.compressedSizeEstText) {
+      el.compressedSizeEstText.textContent = '計算中...';
+    }
+    const duration = await getAudioDuration(pendingLargeFile);
+    if (duration > 0) {
+      let sampleRate = 16000;
+      let use8Bit = false;
+      
+      const size16k16b = duration * 16000 * 2;
+      const size8k16b = duration * 8000 * 2;
+      const size8k8b = duration * 8000 * 1;
+      const size6k8b = duration * 6000 * 1;
+      const size4k8b = duration * 4000 * 1;
+      
+      if (size16k16b <= 15000000) {
+        sampleRate = 16000;
+        use8Bit = false;
+      } else if (size8k16b <= 15000000) {
+        sampleRate = 8000;
+        use8Bit = false;
+      } else if (size8k8b <= 15000000) {
+        sampleRate = 8000;
+        use8Bit = true;
+      } else if (size6k8b <= 15000000) {
+        sampleRate = 6000;
+        use8Bit = true;
+      } else {
+        sampleRate = 4000;
+        use8Bit = true;
+      }
+      
+      const estSizeMb = (duration * sampleRate * (use8Bit ? 1 : 2)) / (1024 * 1024);
+      if (el.compressedSizeEstText) {
+        el.compressedSizeEstText.textContent = estSizeMb.toFixed(1);
+      }
+      
+      // 如果音訊長度大於 90 分鐘 (5400秒)，為避免裝置記憶體不足崩潰，停用自動壓縮
+      if (duration > 5400) {
+        if (el.startAutoCompressBtn) {
+          el.startAutoCompressBtn.disabled = true;
+          el.startAutoCompressBtn.innerHTML = '<i class="fa-solid fa-circle-info"></i> 音訊長度大於 90 分鐘，請手動壓縮';
+          el.startAutoCompressBtn.style.background = 'var(--text-muted)';
+        }
+        if (el.compressedSizeEstText) {
+          el.compressedSizeEstText.textContent = '--';
+        }
+      }
+    } else {
+      if (el.compressedSizeEstText) {
+        el.compressedSizeEstText.textContent = '未知';
+      }
+    }
+  }
+}
+
+function hideAudioLimitModal() {
+  if (el.audioLimitModal) {
+    el.audioLimitModal.classList.remove('active');
+  }
+  pendingLargeFile = null;
+}
+
+// ==================== 音訊自動壓縮處理相關函數 ====================
+
+/**
+ * 取得音訊檔案的播放長度 (秒)
+ */
+function getAudioDuration(file) {
+  return new Promise((resolve) => {
+    const audio = document.createElement('audio');
+    const url = URL.createObjectURL(file);
+    audio.src = url;
+    audio.addEventListener('loadedmetadata', () => {
+      URL.revokeObjectURL(url);
+      resolve(audio.duration);
+    });
+    audio.addEventListener('error', () => {
+      URL.revokeObjectURL(url);
+      resolve(0); // 載入失敗
+    });
+  });
+}
+
+/**
+ * 使用 OfflineAudioContext 在瀏覽器本地進行高效重取樣與單聲道混音
+ */
+async function resampleAudioBuffer(audioBuffer, targetSampleRate) {
+  const numberOfChannels = 1; // 強制轉為單聲道 Mono
+  const duration = audioBuffer.duration;
+  const offlineCtx = new OfflineAudioContext(
+    numberOfChannels,
+    Math.round(targetSampleRate * duration),
+    targetSampleRate
+  );
+  
+  const bufferSource = offlineCtx.createBufferSource();
+  bufferSource.buffer = audioBuffer;
+  bufferSource.connect(offlineCtx.destination);
+  bufferSource.start();
+  
+  const renderedBuffer = await offlineCtx.startRendering();
+  return renderedBuffer;
+}
+
+/**
+ * 將 AudioBuffer 編碼為標準 16-bit 或 8-bit WAV 格式之二進位 Blob
+ */
+function audioBufferToWav(buffer, use8Bit = false) {
+  const sampleRate = buffer.sampleRate;
+  const numChannels = 1; // 單聲道
+  const bytesPerSample = use8Bit ? 1 : 2;
+  const samples = buffer.getChannelData(0);
+  const bufferLength = samples.length * bytesPerSample;
+  const wavBuffer = new ArrayBuffer(44 + bufferLength);
+  const view = new DataView(wavBuffer);
+  
+  /* RIFF 識別碼 */
+  writeString(view, 0, 'RIFF');
+  /* 檔案長度 */
+  view.setUint32(4, 36 + bufferLength, true);
+  /* RIFF 類型 */
+  writeString(view, 8, 'WAVE');
+  /* fmt 格式區塊識別碼 */
+  writeString(view, 12, 'fmt ');
+  /* 格式區塊大小 */
+  view.setUint32(16, 16, true);
+  /* 音訊格式 (1 代表未壓縮 PCM) */
+  view.setUint16(20, 1, true);
+  /* 聲道數 */
+  view.setUint16(22, numChannels, true);
+  /* 取樣率 */
+  view.setUint32(24, sampleRate, true);
+  /* 每秒位元組率 */
+  view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+  /* 區塊對齊 */
+  view.setUint16(32, numChannels * bytesPerSample, true);
+  /* 取樣位元數 */
+  view.setUint16(34, bytesPerSample * 8, true);
+  /* data 資料區塊識別碼 */
+  writeString(view, 36, 'data');
+  /* 資料區塊大小 */
+  view.setUint32(40, bufferLength, true);
+  
+  // 寫入 PCM 取樣點數據
+  let offset = 44;
+  if (use8Bit) {
+    for (let i = 0; i < samples.length; i++, offset++) {
+      // float32 [-1, 1] 轉換為 uint8 [0, 255] (標準無正負號 8位元 PCM)
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      const val = Math.round((s + 1) * 127.5);
+      view.setUint8(offset, val);
+    }
+  } else {
+    for (let i = 0; i < samples.length; i++, offset += 2) {
+      // float32 [-1, 1] 轉換為 int16 [-32768, 32767]
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      const val = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      view.setInt16(offset, val, true);
+    }
+  }
+  
+  return new Blob([wavBuffer], { type: 'audio/wav' });
+}
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+
+/**
+ * 更新壓縮進度條 UI
+ */
+function updateCompressProgress(text, percent) {
+  if (el.compressProgressWrapper) el.compressProgressWrapper.classList.remove('hidden');
+  if (el.compressProgressText) el.compressProgressText.textContent = text;
+  if (el.compressPercentText) el.compressPercentText.textContent = `${percent}%`;
+  if (el.compressProgressBar) el.compressProgressBar.style.width = `${percent}%`;
+}
+
+/**
+ * 重置壓縮按鈕與進度條 UI
+ */
+function resetCompressButton() {
+  if (el.startAutoCompressBtn) {
+    el.startAutoCompressBtn.disabled = false;
+    el.startAutoCompressBtn.innerHTML = '<i class="fa-solid fa-compress"></i> 一鍵自動壓縮並轉譯';
+    el.startAutoCompressBtn.style.background = '';
+  }
+  if (el.compressProgressWrapper) el.compressProgressWrapper.classList.add('hidden');
+}
+
+/**
+ * 啟動本地音訊解碼與重取樣壓縮流程
+ */
+function startAudioCompression() {
+  if (!pendingLargeFile) return;
+  
+  if (el.startAutoCompressBtn) {
+    el.startAutoCompressBtn.disabled = true;
+    el.startAutoCompressBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在解碼中...';
+  }
+  
+  const fileReader = new FileReader();
+  fileReader.onload = async function() {
+    const arrayBuffer = this.result;
+    try {
+      updateCompressProgress('正在解碼音訊數據 (這可能需要 5-15 秒)...', 10);
+      
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      
+      updateCompressProgress('音訊解碼成功，正在配置重取樣參數...', 40);
+      const duration = decodedBuffer.duration;
+      
+      // 動態分析合適的壓縮規格
+      let sampleRate = 16000;
+      let use8Bit = false;
+      
+      const size16k16b = duration * 16000 * 2;
+      const size8k16b = duration * 8000 * 2;
+      const size8k8b = duration * 8000 * 1;
+      const size6k8b = duration * 6000 * 1;
+      const size4k8b = duration * 4000 * 1;
+      
+      if (size16k16b <= 15000000) {
+        sampleRate = 16000;
+        use8Bit = false;
+      } else if (size8k16b <= 15000000) {
+        sampleRate = 8000;
+        use8Bit = false;
+      } else if (size8k8b <= 15000000) {
+        sampleRate = 8000;
+        use8Bit = true;
+      } else if (size6k8b <= 15000000) {
+        sampleRate = 6000;
+        use8Bit = true;
+      } else {
+        sampleRate = 4000;
+        use8Bit = true;
+      }
+      
+      updateCompressProgress(`正在進行重取樣與單聲道混合 (${sampleRate}Hz)...`, 60);
+      const resampledBuffer = await resampleAudioBuffer(decodedBuffer, sampleRate);
+      
+      updateCompressProgress('正在重構為輕量級 WAV 二進位數據...', 85);
+      const wavBlob = audioBufferToWav(resampledBuffer, use8Bit);
+      
+      updateCompressProgress('自動壓縮順利完成！正在套用...', 100);
+      
+      setTimeout(() => {
+        handleCompressedFile(wavBlob, pendingLargeFile.name);
+      }, 500);
+      
+    } catch (err) {
+      console.error('瀏覽器本地壓縮出錯:', err);
+      showToast('本地壓縮失敗！請嘗試重試，或將檔案手動壓縮為低位元率 MP3 再上傳。', 'error');
+      resetCompressButton();
+    }
+  };
+  fileReader.readAsArrayBuffer(pendingLargeFile);
+}
+
+/**
+ * 處理壓縮後的音訊檔案，將其更新至 IndexedDB 或新增為新會議並觸發轉譯
+ */
+async function handleCompressedFile(compressedBlob, originalName) {
+  const baseName = originalName.replace(/\.[^/.]+$/, "");
+  const compressedName = `${baseName}_compressed.wav`;
+  
+  // 隱藏 modal (內部會清空 pendingLargeFile，所以在這之前取得檔名)
+  if (el.audioLimitModal) {
+    el.audioLimitModal.classList.remove('active');
+  }
+  
+  // 檢查是否是點選歷史失敗會議的「重新嘗試轉譯」所產生的壓縮
+  if (currentMeeting && currentMeeting.audioData) {
+    currentMeeting.audioData = compressedBlob;
+    currentMeeting.audioName = compressedName;
+    currentMeeting.audioMime = 'audio/wav';
+    
+    try {
+      await saveMeeting(currentMeeting);
+      
+      // 更新音訊播放器連結
+      const audioUrl = URL.createObjectURL(compressedBlob);
+      el.audioPlayer.src = audioUrl;
+      el.audioFileName.textContent = compressedName;
+      
+      showToast('音訊已成功壓縮，開始重新轉譯！', 'success');
+      await triggerTranscription();
+    } catch (err) {
+      console.error('更新音訊失敗:', err);
+      showToast('更新壓縮音訊檔案失敗！', 'error');
+    }
+  } else {
+    // 全新上傳檔案的情境
+    const createdAt = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+    const newMeeting = {
+      title: baseName,
+      created_at: createdAt,
+      audioData: compressedBlob,
+      audioName: compressedName,
+      audioMime: 'audio/wav',
+      transcript: [],
+      summary: '',
+      action_items: ''
+    };
+    
+    try {
+      const id = await saveMeeting(newMeeting);
+      newMeeting.id = id;
+      currentMeeting = newMeeting;
+      await refreshMeetingList();
+      await loadMeeting(id);
+      
+      showToast('檔案壓縮成功！開始執行語音轉譯。', 'success');
+      await triggerTranscription();
+    } catch (err) {
+      console.error('上傳處理失敗:', err);
+      showToast('儲存壓縮音訊失敗！', 'error');
+    }
+  }
+  
+  pendingLargeFile = null;
 }
 
 function saveSettings() {
@@ -847,7 +1260,9 @@ async function handleFileUpload(event) {
   // 大小限制提示（20MB）
   const sizeMb = file.size / (1024 * 1024);
   if (sizeMb > 20) {
-    showToast(`音訊大小為 ${sizeMb.toFixed(1)}MB。若檔案過大，可能導致 ASR API 逾時或失敗。`, 'error');
+    showAudioLimitModal(sizeMb);
+    el.fileUploadInput.value = '';
+    return;
   }
 
   const createdAt = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
@@ -905,6 +1320,13 @@ function blobToBase64(blob) {
 async function triggerTranscription() {
   if (!currentMeeting || !currentMeeting.audioData) {
     showToast('找不到關聯的音訊檔案，無法進行轉譯。', 'error');
+    return;
+  }
+
+  // 檢查檔案大小限制 (20MB)
+  const sizeMb = currentMeeting.audioData.size / (1024 * 1024);
+  if (sizeMb > 20) {
+    showAudioLimitModal(sizeMb);
     return;
   }
 
@@ -1167,7 +1589,7 @@ async function triggerSummaryGeneration(showAlert = true) {
     const formattedTranscript = currentMeeting.transcript.map(t => `[${t.start}] ${t.speaker}: ${t.text}`).join('\n');
     
     const prompt = `
-      定你是一位專業的行政與專案管理助理。請仔細閱讀以下會議的逐字稿內容，並完成以下任務：
+      你是一位專業的行政與專案管理助理。請仔細閱讀以下會議的逐字稿內容，並完成以下任務：
       1. 生成精確的會議摘要（包含：會議主旨、主要討論議題、關鍵決議點）。使用漂亮的 Markdown 語法（善用標題、清單與粗體標記）。
          【排版規範】：在「主要討論議題」中，請使用無序清單格式（例如：- **議題主題**：該議題的討論要點與細節描述），確保每個議題主題與其描述內容都寫在同一個清單項目 (li) 中在同一行完成，切勿換行或單獨使用冒號起行，以保持版面整潔。
       2. 整理一份清晰的待辦清單 (Action Items)（包含：執行人、具體任務內容、期限，若逐字稿有提及）。每個任務前請使用 - [ ] 語法格式化。

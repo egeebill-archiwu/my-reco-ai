@@ -456,6 +456,53 @@
     </div>
   </div>
 
+  <!-- 檔案大小超限提示彈出視窗 -->
+  <div class="modal" id="audioLimitModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-triangle-exclamation" style="color: var(--status-warning);"></i> 檔案大小超限提示</h2>
+        <button class="btn-close-modal" id="closeAudioLimitModalBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="text-align: left; line-height: 1.6; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; max-height: calc(85vh - 120px);">
+        <p style="margin: 0;">您上傳的音訊檔案大小為 <strong id="uploadFileSizeText">0.0</strong>MB，已超過系統直接轉譯的限制大小 (建議低於 20MB)。</p>
+        <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">由於本程式是<strong>完全本地運行且保障隱私</strong>的客戶端網頁，語音檔案必須在您的設備中轉換並上傳給 Google Gemini API。Google 對直接上傳的檔案有 <strong>20MB</strong> 的傳輸限制，超過此限制將會導致轉譯失敗。</p>
+        
+        <!-- 自動壓縮區塊 -->
+        <div id="autoCompressSection" style="padding: 16px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <h4 style="color: var(--accent-blue); margin: 0; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-wand-magic-sparkles"></i> 推薦：自動在瀏覽器中壓縮 (完全本地)</h4>
+          <p style="font-size: 0.85rem; margin: 0; color: var(--text-secondary); line-height: 1.5;">
+            RECO AI 可以直接在您的手機或電腦上，將此音訊自動轉換為低取樣率的單聲道 WAV 格式，檔案大小將降至約 <strong id="compressedSizeEstText">--</strong>MB（符合 20MB 限制，且不影響 AI 識別品質）。
+          </p>
+          <div id="compressProgressWrapper" class="hidden" style="width: 100%; margin-top: 5px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
+              <span id="compressProgressText">正在解碼音訊中...</span>
+              <span id="compressPercentText">0%</span>
+            </div>
+            <div style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden;">
+              <div id="compressProgressBar" style="width: 0%; height: 100%; background: var(--accent-gradient); transition: width 0.1s ease;"></div>
+            </div>
+          </div>
+          <button class="btn-primary" id="startAutoCompressBtn" style="width: 100%; font-size: 0.9rem; padding: 10px; border-radius: 8px;">
+            <i class="fa-solid fa-compress"></i> 一鍵自動壓縮並轉譯
+          </button>
+        </div>
+
+        <div class="guide-banner" style="border-color: rgba(234, 179, 8, 0.3); background: rgba(234, 179, 8, 0.05); margin: 0;">
+          <h4 style="color: #eab308; margin-bottom: 8px; font-size: 0.95rem;"><i class="fa-solid fa-lightbulb"></i> 備用方案：手動壓縮檔案</h4>
+          <p style="font-size: 0.85rem; line-height: 1.5; margin: 0 0 8px 0;">您也可以在您的手機或電腦上<strong>手動將錄音檔壓縮為低位元率的 MP3 格式</strong>：</p>
+          <ol style="padding-left: 20px; font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary);">
+            <li>建議將音訊轉為 <strong>32kbps 或 64kbps 的單聲道 (Mono) MP3 格式</strong>。</li>
+            <li>壓縮後，一段 <strong>1 小時 (60分鐘)</strong> 的會議語音檔大小會縮減至僅約 <strong>13MB ~ 25MB</strong>，而人聲清晰度依然足夠讓 AI 進行高精準度轉寫。</li>
+            <li>您可以使用免費線上音訊壓縮網站（例如搜尋：<a href="https://www.google.com/search?q=online+audio+compressor" target="_blank" style="color: var(--accent-blue); text-decoration: underline;">線上音訊壓縮 <i class="fa-solid fa-up-right-from-square" style="font-size:0.8rem;"></i></a>）或手機 App 進行壓縮，再重新上傳即可。</li>
+          </ol>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="closeAudioLimitBtn">取消並返回</button>
+      </div>
+    </div>
+  </div>
+
   <!-- A4 一頁總覽列印專用容器 -->
   <div id="a4PrintContainer" class="a4-print-container"></div>
 
@@ -463,6 +510,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- JavaScript Entrypoint -->
-  <script src="app.js" type="module"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
