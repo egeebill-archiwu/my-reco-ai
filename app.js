@@ -1725,6 +1725,7 @@ async function triggerTranscription() {
   } finally {
     el.transcribeStatusBanner.classList.add('hidden');
     el.transcriptControls.classList.remove('hidden');
+  }
 }
 
 /**
